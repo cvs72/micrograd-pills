@@ -1,1 +1,1 @@
-K01 | vendor | Self-hosted dependencies. The fonts (Outfit, IBM Plex Sans, IBM Plex Mono as woff2 in `site/vendor/fonts/` with one `fonts.css` of @font-face rules) and Three.js r128 (`site/vendor/three/three.min.js`, the same build the pages use today) are already in `site/vendor/`; wire every page to them and rem
+K02 | skeleton | A proper document for every page: `<!doctype html>`, `<html lang="en">`, charset, viewport, a one-sentence description, the title as "NN · Name · Knowledge pills". Checks: skeleton, html-validate, captures identical.
