@@ -8,3 +8,6 @@ BLOCKED: the browser cannot launch here; I did not bypass the sandbox or touch t
 K01 (retry 2): re-ran `node loop/tools/shots.mjs loop/shots`; it crashes at newPage again (chrome-headless-shell, hiservices-xpcservice "Connection invalid"), so no captures exist.
 Verified again: `pages.mjs local links` ok. Wiring edits unchanged; nothing further to fix in the sources.
 BLOCKED: the browser cannot launch in this sandbox, so the captures-identical check did not run and K01 stays un-ticked. I did not touch the tools or baseline.
+K01 (retry 3): the capture tool now launches. Rebuilt with `node build.js` and re-captured all 12 pills.
+Verified: html-validate clean, `pages.mjs local links` ok, compare.mjs: 83 images and 12 content dumps, 0 problems (worst 0.06% on 01-the-map-04).
+K01 ticked. Nothing imperfect that I know of; the sources were unchanged this iteration.
