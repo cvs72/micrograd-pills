@@ -43,3 +43,7 @@ K06: build.js now adds the Content-Security-Policy meta to every pill (index edi
 The inline import map is admitted by its sha256 in script-src (computed in build.js; Chrome has no external import maps); no 'unsafe-inline' for scripts.
 Verified: node build.js, html-validate clean, pages.mjs csp local links skeleton kit three a11y nav ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.31%).
 Imperfect: the policy string differs from the plan's by that one hash; I did not read the browser console directly, only saw that the captures match (so the scripts run under the policy).
+K07: feedback named 11-downhill-01 at 6.61%; I rebuilt and re-captured and compare.mjs gave 83 images, 12 dumps, 0 problems (worst 0.31%), so I could not reproduce it (it looks like the same font race as K04).
+K07: added .github/workflows/site.yml (npm ci, build, html-validate, pages.mjs checks, gitleaks install + publish-check.sh on every push; upload-pages-artifact and deploy-pages on main). README: self-hosted note, npm run serve preview, GitHub Pages setup.
+Verified: pages.mjs ci ok, html-validate clean; site files unchanged this iteration.
+Imperfect: the workflow is untested (no network here); gitleaks is installed from a pinned release tarball, not its action. Pill 11 step 1 may flake on the font race.

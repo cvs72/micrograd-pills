@@ -10,7 +10,8 @@ running example throughout: a 64 → 32 → 16 → 10 digit reader trained with 
 builds micrograd, the tiny autograd engine, in about a hundred lines. Every number on screen comes from the scripts in
 `src/digits/`.
 
-The pages are plain HTML, CSS and JavaScript (Three.js r128 from a CDN); the site needs no server.
+The pages are plain HTML, CSS and JavaScript (Three.js and the fonts are self-hosted in `site/vendor/`). They use ES
+modules, so preview them over http (`npm run serve`), not by opening the files directly.
 
 ## Layout
 
@@ -29,6 +30,14 @@ uv sync && cd src/digits && uv run python train.py && uv run python loss.py   # 
 python3 -m http.server 8765 --bind 127.0.0.1 --directory site               # preview
 ./publish-check.sh                  # before any push
 ```
+
+Local preview: `npm run serve`, then open http://127.0.0.1:8765/.
+
+## GitHub Pages
+
+`.github/workflows/site.yml` runs on every push: `node build.js`, html-validate, the page checks and
+`./publish-check.sh` (with gitleaks over the full history). On `main` it then deploys `site/` to GitHub Pages. One-time
+setup: in the repository's Settings → Pages, set Source to "GitHub Actions".
 
 The scripts run in order: `train.py` writes `net.json`; `loss.py`, `slope.py`, `chain.py`, `neuron.py`, `descent.py`
 and `names.py` read it and write their own JSON. All are deterministic (seed 42).
