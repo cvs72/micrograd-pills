@@ -57,3 +57,11 @@ button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
   #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+main { display: contents; }
+#noscript { position: fixed; inset: 40% 16px auto; margin: 0; text-align: center; color: var(--muted); }
+/* the page footer: out of sight until a keyboard user reaches its links, so the stage keeps its whole frame */
+#pillnav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 18px; padding: 10px 16px;
+           background: var(--bg2); border-top: 1px solid var(--line); font-size: 14px; }
+#pillnav:not(:focus-within) { clip-path: inset(50%); width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; left: auto; white-space: nowrap; }
+#pillnav a { color: var(--fg); }
+#pillnav a:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }

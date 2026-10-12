@@ -36,3 +36,6 @@ K04 (retry 5, ticked): the baseline's first fit depended on a font race: pill 05
 Fix: `K.run` takes `firstFitBodyFallback`; the first layout/fit uses the fallback `--body` stack, then the web font settles in. Only pill 05 sets it.
 Verified: node build.js, html-validate clean, `pages.mjs three local links kit` ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.31%).
 Imperfect: the per-pill option mirrors a race in the baseline rather than a principled rule.
+K05: `build.js` now wraps every pill (function `frame`): Open Graph title/description/type from the page's own title and description, `<main>` around stage..deck, `aria-live="polite"` on `#text`, a `<noscript>` message, and a footer linking to the index and the previous/next pill. kit CSS: `main {display: contents}`, noscript and footer rules; button focus styles untouched.
+Verified: node build.js, html-validate clean, `pages.mjs a11y nav links skeleton local kit three` ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.31%).
+Imperfect: the footer is visually hidden until a link takes keyboard focus (a visible line would change every capture); site/index.html has no Open Graph tags yet.
