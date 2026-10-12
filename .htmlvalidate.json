@@ -1,0 +1,7 @@
+{
+  "root": true,
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "empty-heading": "off"
+  }
+}

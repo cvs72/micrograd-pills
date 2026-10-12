@@ -1,0 +1,1 @@
+{"type":"object","properties":{"tasks":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"issues":{"type":"array","items":{"type":"object","properties":{"severity":{"type":"string","enum":["blocking","minor"]},"text":{"type":"string"}},"required":["severity","text"]}}},"required":["id","issues"]}}},"required":["tasks"]}

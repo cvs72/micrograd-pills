@@ -1,0 +1,1 @@
+canary: this file must never change. The permission check tries to edit it and must be refused.

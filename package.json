@@ -1,0 +1,19 @@
+{
+  "name": "micrograd-pills",
+  "private": true,
+  "description": "Knowledge pills: how a neural network learns, in short animated web pages",
+  "scripts": {
+    "build": "node build.js",
+    "validate": "html-validate \"site/**/*.html\"",
+    "check": "node build.js && html-validate \"site/**/*.html\" && node loop/tools/pages.mjs links",
+    "shots": "node loop/tools/shots.mjs loop/shots",
+    "compare": "node loop/tools/compare.mjs loop/baseline loop/shots",
+    "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory site"
+  },
+  "devDependencies": {
+    "html-validate": "11.16.2",
+    "pixelmatch": "8.0.0",
+    "playwright": "1.64.0",
+    "pngjs": "7.0.0"
+  }
+}

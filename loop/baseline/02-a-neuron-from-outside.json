@@ -1,0 +1,131 @@
+{
+ "steps": 9,
+ "pageTitle": "Neuron From Outside",
+ "content": [
+  {
+   "title": "After the map",
+   "text": "After the map we have a better idea of what sits inside AI. The part that matters for us is the centre: what the language models are built from. Trace the layers inward and we reach machine learning, and inside it neural networks. Everything else can go grey for now.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n1 / 9",
+   "labels": [
+    "Artificial intelligence",
+    "Deep learning",
+    "Generative AI",
+    "LLMs",
+    "Machine learning",
+    "Neural networks"
+   ]
+  },
+  {
+   "title": "A very large network",
+   "text": "A language model is a very large neural network with a particular wiring. Rows of small units, each row feeding the next. And a network can be stripped down to its smallest part: one unit, a neuron. Everything the network does is this unit, repeated.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n2 / 9",
+   "labels": []
+  },
+  {
+   "title": "A neuron",
+   "text": "A neuron is a short series of calculations in a fixed order. Numbers come in. Several of them, each on its own wire: in a real network, the outputs of the row before. The neuron receives them and cannot change them.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n3 / 9",
+   "labels": [
+    "a number",
+    "a number",
+    "a number"
+   ]
+  },
+  {
+   "title": "Weights",
+   "text": "Each number is multiplied by a weight: a number that decides how much that input counts. Near zero, the input is ignored. Large, it dominates. Negative, it is flipped. One weight per wire, and the weights belong to the neuron.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n4 / 9",
+   "labels": [
+    "a number",
+    "a number",
+    "a number",
+    "× weight",
+    "× weight",
+    "× weight"
+   ]
+  },
+  {
+   "title": "Add them up, add the bias",
+   "text": "The results are added up into one total. Then one more number, the bias, is added to that total whatever the inputs were. It lets the neuron lean towards yes or no before it has looked at anything. One bias per neuron.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight\nadd them up + bias",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n5 / 9",
+   "labels": [
+    "+ bias",
+    "a number",
+    "a number",
+    "a number",
+    "add them up",
+    "× weight",
+    "× weight",
+    "× weight"
+   ]
+  },
+  {
+   "title": "Squash: tanh",
+   "text": "That total is then squashed. For decades the squash was tanh, a fixed curve that bends any number into the range from minus one to one. The bend is the point: without it, rows of neurons would collapse into one straight line and could not learn anything curved.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight\nadd them up + bias\nsquash: tanh, bends into −1 … 1",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n6 / 9",
+   "labels": [
+    "+ bias",
+    "a number",
+    "a number",
+    "a number",
+    "add them up",
+    "squash: tanh",
+    "× weight",
+    "× weight",
+    "× weight"
+   ]
+  },
+  {
+   "title": "Squash: ReLU",
+   "text": "Today most networks use ReLU instead. It does the same job more cheaply: negative numbers become zero, positive numbers pass through unchanged. And it keeps the learning signal alive through many layers, where tanh goes flat at both ends and the signal fades.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight\nadd them up + bias\nsquash: tanh, bends into −1 … 1\nsquash: ReLU, 0 or the number itself",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n7 / 9",
+   "labels": [
+    "+ bias",
+    "a number",
+    "a number",
+    "a number",
+    "add them up",
+    "squash: ReLU",
+    "× weight",
+    "× weight",
+    "× weight"
+   ]
+  },
+  {
+   "title": "One output",
+   "text": "Out of all that comes one number: the neuron’s output. That is all the next row will ever see of it. The weights, the sum, the bias and the squash stay inside.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight\nadd them up + bias\nsquash: tanh, bends into −1 … 1\nsquash: ReLU, 0 or the number itself\none number out",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n8 / 9",
+   "labels": [
+    "+ bias",
+    "a number",
+    "a number",
+    "a number",
+    "add them up",
+    "one number out",
+    "squash: ReLU",
+    "× weight",
+    "× weight",
+    "× weight",
+    "× × × + + squash"
+   ]
+  },
+  {
+   "title": "A network repeats it",
+   "text": "A network repeats this little calculation for every neuron, in rows, with the outputs of one row feeding the next. In a language model that is millions of neurons and billions of weights. Every one of those weights is a number that training will adjust. The next pills show how.",
+   "ledger": "THE RECIPE SO FAR\nAI ⊃ machine learning ⊃ neural networks\nlanguage model = a very large network of neurons\nnumbers in, one per wire\neach number × its weight\nadd them up + bias\nsquash: tanh, bends into −1 … 1\nsquash: ReLU, 0 or the number itself\none number out\nrepeat for every neuron, row after row · the weights are what training adjusts",
+   "eyebrow": "KNOWLEDGE PILL 02 · A NEURON FROM THE OUTSIDE\n9 / 9",
+   "labels": [
+    "a neural network · rows of neurons, each row feeding the next"
+   ]
+  }
+ ],
+ "errors": []
+}

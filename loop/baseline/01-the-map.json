@@ -1,0 +1,129 @@
+{
+ "steps": 7,
+ "pageTitle": "The AI Map",
+ "content": [
+  {
+   "title": "Start where everybody starts",
+   "text": "ChatGPT, Claude, Gemini, Llama, Grok, Kimi, DeepSeek, Mistral. Different companies, different names, one kind of machine: a large language model, a program that reads text and predicts which text should come next. GPT is only OpenAI’s name for its family. The recipe is shared by all of them.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models\nall of them: transformer-based language models",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n1 / 7",
+   "labels": [
+    "ChatGPT",
+    "Claude",
+    "DeepSeek",
+    "Gemini",
+    "Grok",
+    "Kimi",
+    "Language models\nLLMs",
+    "Llama",
+    "Mistral"
+   ]
+  },
+  {
+   "title": "Zoom out: generative AI",
+   "text": "Language models are one branch of generative AI: models that produce new content rather than only sorting or labelling what already exists. Their siblings produce images, video, voice and music. Same way of training, different kind of output.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI\nalso generative: image · video · voice · music",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n2 / 7",
+   "labels": [
+    "Generative AI\nproduces new content",
+    "Image\nMidjourney, Stable Diffusion",
+    "LLMs",
+    "Language models\nLLMs",
+    "Music\nSuno, Udio",
+    "Video\nSora, Veo",
+    "Voice\nElevenLabs"
+   ]
+  },
+  {
+   "title": "Zoom out: deep learning",
+   "text": "Generative AI is deep learning: networks with many layers, trained on very large data. Most of deep learning does not generate anything. It recognises faces, transcribes speech, ranks the next video in a feed, translates, plays Go, predicts protein shapes. Generating is the newest branch, not the biggest.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI ⊂ deep learning\nalso deep learning: vision · speech · recommendation · translation · game playing · protein folding",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n3 / 7",
+   "labels": [
+    "Computer vision\nface unlock, scans",
+    "Deep learning\nmany layers",
+    "Game playing\nAlphaGo",
+    "Generative AI",
+    "Generative AI\nproduces new content",
+    "LLMs",
+    "Protein folding\nAlphaFold",
+    "Recommendation\nfeeds, ads",
+    "Speech recognition\ndictation, subtitles",
+    "Translation"
+   ]
+  },
+  {
+   "title": "Zoom out: neural networks",
+   "text": "Deep learning is a neural network with many layers. The network idea is older than the depth: the 1958 perceptron is one layer, and the networks of the 1990s had a few layers and read postcodes and cheques. “Deep” only means many layers stacked. It became practical around 2012, when data and graphics cards caught up.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI ⊂ deep learning ⊂ neural networks\nalso networks: perceptron (1958, one layer) · shallow networks (a few layers)",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n4 / 7",
+   "labels": [
+    "Deep learning",
+    "Deep learning\nmany layers",
+    "Generative AI",
+    "LLMs",
+    "Neural networks\nrows of small functions",
+    "Perceptron\n1958 · one layer",
+    "Shallow networks\na few layers · 1990s"
+   ]
+  },
+  {
+   "title": "Zoom out: machine learning",
+   "text": "A neural network is one family inside machine learning: programs that adjust their own numbers from examples instead of following rules a person wrote. The other families do the same with different machinery: trees and forests, boosting such as XGBoost, regression, support vector machines, nearest neighbours, clustering. Several of them still beat networks on table-shaped data.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI ⊂ deep learning ⊂ neural networks ⊂ machine learning\nalso machine learning: regression · trees & forests · boosting · SVM · nearest neighbours · naive Bayes · clustering · reinforcement learning",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n5 / 7",
+   "labels": [
+    "Boosting (XGBoost)",
+    "Clustering (k-means)",
+    "Deep learning",
+    "Generative AI",
+    "LLMs",
+    "Machine learning\nlearns from examples",
+    "Naive Bayes",
+    "Nearest neighbours",
+    "Neural networks",
+    "Neural networks\nrows of small functions",
+    "Regression",
+    "Reinforcement learning",
+    "Support vector machines",
+    "Trees & forests"
+   ]
+  },
+  {
+   "title": "Zoom out: artificial intelligence",
+   "text": "Machine learning is one branch of AI, the 1956 name for any program doing a task that seemed to need a mind. The other branches do not learn from data. Rules written by experts, search and planning like the chess computer that beat Kasparov in 1997, reasoning with probabilities, evolutionary algorithms, fuzzy logic inside washing machines and cameras. All of them earned money long before 2010.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI ⊂ deep learning ⊂ neural networks ⊂ machine learning ⊂ AI\nalso AI: expert systems · search & planning · probabilistic reasoning · evolutionary algorithms · fuzzy logic · knowledge & logic",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n6 / 7",
+   "labels": [
+    "Artificial intelligence\nthe 1956 name",
+    "Deep learning",
+    "Evolutionary algorithms",
+    "Expert systems",
+    "Fuzzy logic",
+    "Generative AI",
+    "Knowledge & logic",
+    "LLMs",
+    "Machine learning",
+    "Machine learning\nlearns from examples",
+    "Neural networks",
+    "Probabilistic reasoning",
+    "Search & planning"
+   ]
+  },
+  {
+   "title": "Where today’s AI sits",
+   "text": "Six layers, each inside the next. The AI everybody uses today is the innermost one: AI, machine learning, neural networks, deep learning, generative AI, and the language models at the centre. Every other branch is still there and still working. This series goes down to that centre, to the smallest piece that makes it learn.",
+   "ledger": "THE MAP SO FAR · ⊂ MEANS “SITS INSIDE”\nChatGPT, Claude, Gemini… ⊂ language models ⊂ generative AI ⊂ deep learning ⊂ neural networks ⊂ machine learning ⊂ AI\nsix layers, one inside the next",
+   "eyebrow": "KNOWLEDGE PILL 01 · THE MAP\n7 / 7",
+   "labels": [
+    "Artificial intelligence",
+    "Deep learning",
+    "Generative AI",
+    "LLMs",
+    "Machine learning",
+    "Neural networks"
+   ]
+  }
+ ],
+ "errors": []
+}

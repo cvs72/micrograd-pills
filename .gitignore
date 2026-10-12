@@ -3,6 +3,15 @@ __pycache__/
 .uv-cache/
 node_modules/
 .DS_Store
+# the loop's runtime state (never the plan, the tools or the baseline)
+loop/logs/
+loop/shots/
+loop/srt-settings.json
+.claude-home/
+.cache/
+.tmp/
+.smoke/
+STOP
 .claude/settings.local.json
 CLAUDE.local.md
 photos/
