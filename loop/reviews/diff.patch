@@ -1,44 +1,522 @@
-diff --git a/site/kit/pill.js b/site/kit/pill.js
-index f6d5636..c804bfd 100644
---- a/site/kit/pill.js
-+++ b/site/kit/pill.js
-@@ -166,7 +166,12 @@ window.Pill = {
-       // preview hook (?debug): fast-forward the current step by `secs` of animation time and render once, for screenshots from a hidden tab
-       if (/\bdebug\b/.test(location.search)) window.__ff = secs => { const end = now + secs; while (now < end) { now += 0.05; stepAnims(); } camRadius = camRadiusGoal; camYaw = camYawGoal; camElev = camElevGoal; camTarget.copy(camGoal);
-         place(0); if (r.onFrame) r.onFrame(); placeLabels(); renderer.render(scene, camera); return now; };
--      layout(); go(0, true); schedule(frame);    }
-+      // firstFitBodyFallback: this pill was framed on the fallback body font; make its first fit there, then let the web font settle in
-+      const root = document.documentElement.style;
-+      if (r.firstFitBodyFallback) root.setProperty('--body', "'Helvetica Neue', Arial, sans-serif");
-+      layout(); go(0, true);
-+      root.removeProperty('--body');
-+      schedule(frame);    }
+diff --git a/build.js b/build.js
+index 69873c6..8961344 100644
+--- a/build.js
++++ b/build.js
+@@ -18,6 +18,19 @@ const PILLS = [
+   ["11-downhill", { __DESCENT__: "descent.json" }],
+   ["12-the-names", { __NAMES__: "names.json", __CURVE__: () => JSON.stringify(JSON.parse(data("loss.json")).curve) }],
+ ];
++// What every pill shares around its stage: Open Graph tags, the <main> landmark, the live step text, the <noscript>
++// message and the footer with the links to the index and the neighbouring pills (shown when it takes keyboard focus).
++const frame = (page, slug) => {
++  const i = PILLS.findIndex(p => p[0] === slug), href = j => `${PILLS[j][0]}.html`;
++  const title = page.match(/<title>([^<]*)<\/title>/)[1], desc = page.match(/<meta name="description" content="([^"]*)">/)[1];
++  const link = (j, text) => j >= 0 && j < PILLS.length ? `<a href="${href(j)}">${text}</a>` : "";
++  const footer = `<footer id="pillnav"><a href="../index.html">All pills</a>${link(i - 1, "◀ Previous pill")}${link(i + 1, "Next pill ▶")}</footer>`;
++  return page
++    .replace(/(<meta name="description"[^>]*>\n)/, `$1<meta property="og:title" content="${title}">\n<meta property="og:description" content="${desc}">\n<meta property="og:type" content="website">\n`)
++    .replace('<div id="stage"></div>', "<main>\n<div id=\"stage\"></div>")
++    .replace(/(<\/div>\n)(\n<script type="importmap">)/, "$1</main>\n<noscript><p id=\"noscript\">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>\n" + footer + "\n$2")
++    .replace('<p id="text">', '<p id="text" aria-live="polite">');
++};
+ fs.mkdirSync("site/pills", { recursive: true });
+ let bad = 0;
+ for (const [slug, fills] of PILLS) {
+@@ -30,6 +43,7 @@ for (const [slug, fills] of PILLS) {
+       page = page.replace(key, typeof src === "function" ? src() : data(src));
+     }
+   }
++  page = frame(page, slug);
+   const left = page.match(/__[A-Z]+__/);
+   if (left) { console.log(`${slug}: ${left[0]} left unfilled`); bad++; }
+   const m = page.match(/<script type="module">\n([\s\S]*)<\/script>\s*(?:<\/body>\s*<\/html>\s*)?$/);
+diff --git a/site/kit/pill.css b/site/kit/pill.css
+index 2c0b580..3d07a08 100644
+--- a/site/kit/pill.css
++++ b/site/kit/pill.css
+@@ -57,3 +57,11 @@ button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+   #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+ }
+ @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
++main { display: contents; }
++#noscript { position: fixed; inset: 40% 16px auto; margin: 0; text-align: center; color: var(--muted); }
++/* the page footer: out of sight until a keyboard user reaches its links, so the stage keeps its whole frame */
++#pillnav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 18px; padding: 10px 16px;
++           background: var(--bg2); border-top: 1px solid var(--line); font-size: 14px; }
++#pillnav:not(:focus-within) { clip-path: inset(50%); width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; left: auto; white-space: nowrap; }
++#pillnav a { color: var(--fg); }
++#pillnav a:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+diff --git a/site/pills/01-the-map.html b/site/pills/01-the-map.html
+index a132048..c4336ca 100644
+--- a/site/pills/01-the-map.html
++++ b/site/pills/01-the-map.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="Where neural networks sit inside the map of artificial intelligence, zooming out one level at a time.">
++<meta property="og:title" content="01 · The AI Map · Knowledge pills">
++<meta property="og:description" content="Where neural networks sit inside the map of artificial intelligence, zooming out one level at a time.">
++<meta property="og:type" content="website">
+ <title>01 · The AI Map · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -36,13 +39,14 @@
  
-     const K = { reduced, stage, labelsEl, deck, renderer, scene, camera, glowMat, lineMat, label, say, state, anchor, mk, placeLabels, makePanel,
-       anim, pulse, later, draw, sweep, fade, glow, on, fadeIn, drawTo, easeOut, easeInOut, linear, lerp, run, clearAnims,
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>01</b> · the map</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -52,6 +56,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="02-a-neuron-from-outside.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/02-a-neuron-from-outside.html b/site/pills/02-a-neuron-from-outside.html
+index 843378c..3220e61 100644
+--- a/site/pills/02-a-neuron-from-outside.html
++++ b/site/pills/02-a-neuron-from-outside.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="A single neuron seen from the outside: numbers go in, one number comes out.">
++<meta property="og:title" content="02 · Neuron From Outside · Knowledge pills">
++<meta property="og:description" content="A single neuron seen from the outside: numbers go in, one number comes out.">
++<meta property="og:type" content="website">
+ <title>02 · Neuron From Outside · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -30,13 +33,14 @@
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>02</b> · a neuron from the outside</span><span id="count">1 / 9</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -46,6 +50,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="01-the-map.html">◀ Previous pill</a><a href="03-a-network-at-work.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/03-a-network-at-work.html b/site/pills/03-a-network-at-work.html
+index 287d301..918c3a2 100644
+--- a/site/pills/03-a-network-at-work.html
++++ b/site/pills/03-a-network-at-work.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="A trained network reading a handwritten digit, layer by layer.">
++<meta property="og:title" content="03 · A Network At Work · Knowledge pills">
++<meta property="og:description" content="A trained network reading a handwritten digit, layer by layer.">
++<meta property="og:type" content="website">
+ <title>03 · A Network At Work · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -20,13 +23,14 @@
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>03</b> · a network at work</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -36,6 +40,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="02-a-neuron-from-outside.html">◀ Previous pill</a><a href="04-one-knob.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/04-one-knob.html b/site/pills/04-one-knob.html
+index ce8d9bd..5e13b2a 100644
+--- a/site/pills/04-one-knob.html
++++ b/site/pills/04-one-knob.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="One knob of the digit network turned on its own, and what it does to the output.">
++<meta property="og:title" content="04 · One Knob · Knowledge pills">
++<meta property="og:description" content="One knob of the digit network turned on its own, and what it does to the output.">
++<meta property="og:type" content="website">
+ <title>04 · One Knob · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -14,13 +17,14 @@
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>04</b> · one knob</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -30,6 +34,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="03-a-network-at-work.html">◀ Previous pill</a><a href="05-the-straight-line.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
 diff --git a/site/pills/05-the-straight-line.html b/site/pills/05-the-straight-line.html
-index bb04a22..cc2375d 100644
+index cc2375d..68433d3 100644
 --- a/site/pills/05-the-straight-line.html
 +++ b/site/pills/05-the-straight-line.html
-@@ -263,7 +263,7 @@ still one line. Every number on screen is recomputed from the real weights in di
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The straight line a neuron computes, and why stacking only straight lines is not enough.">
++<meta property="og:title" content="05 · The Straight Line · Knowledge pills">
++<meta property="og:description" content="The straight line a neuron computes, and why stacking only straight lines is not enough.">
++<meta property="og:type" content="website">
+ <title>05 · The Straight Line · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
  
-   // ---------- camera ----------
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>05</b> · the straight line</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="04-one-knob.html">◀ Previous pill</a><a href="06-s-curve-and-hinge.html">Next pill ▶</a></footer>
  
--  K.run({ steps, enter, baseState, ledger: renderLedger });
-+  K.run({ steps, enter, baseState, ledger: renderLedger, firstFitBodyFallback: true });
- })();
- </script>
- </body>
-diff --git a/src/pills/05-the-straight-line.template.html b/src/pills/05-the-straight-line.template.html
-index 4ec9784..40f8ca9 100644
---- a/src/pills/05-the-straight-line.template.html
-+++ b/src/pills/05-the-straight-line.template.html
-@@ -263,7 +263,7 @@ still one line. Every number on screen is recomputed from the real weights in di
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/06-s-curve-and-hinge.html b/site/pills/06-s-curve-and-hinge.html
+index 5764881..5aca8d9 100644
+--- a/site/pills/06-s-curve-and-hinge.html
++++ b/site/pills/06-s-curve-and-hinge.html
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The S-curve and the hinge: two bends that let a network go beyond straight lines.">
++<meta property="og:title" content="06 · The S-Curve And The Hinge · Knowledge pills">
++<meta property="og:description" content="The S-curve and the hinge: two bends that let a network go beyond straight lines.">
++<meta property="og:type" content="website">
+ <title>06 · The S-Curve And The Hinge · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
  
-   // ---------- camera ----------
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>06</b> · the S-curve and the hinge</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="05-the-straight-line.html">◀ Previous pill</a><a href="07-the-bowl.html">Next pill ▶</a></footer>
  
--  K.run({ steps, enter, baseState, ledger: renderLedger });
-+  K.run({ steps, enter, baseState, ledger: renderLedger, firstFitBodyFallback: true });
- })();
- </script>
- </body>
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/07-the-bowl.html b/site/pills/07-the-bowl.html
+index b472d62..a9b7913 100644
+--- a/site/pills/07-the-bowl.html
++++ b/site/pills/07-the-bowl.html
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The loss as a bowl: how wrong the network is, for every setting of a knob.">
++<meta property="og:title" content="07 · The Bowl · Knowledge pills">
++<meta property="og:description" content="The loss as a bowl: how wrong the network is, for every setting of a knob.">
++<meta property="og:type" content="website">
+ <title>07 · The Bowl · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>07</b> · the bowl</span><span id="count">1 / 6</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="06-s-curve-and-hinge.html">◀ Previous pill</a><a href="08-the-slope.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/08-the-slope.html b/site/pills/08-the-slope.html
+index 70f41a0..6077a1b 100644
+--- a/site/pills/08-the-slope.html
++++ b/site/pills/08-the-slope.html
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The slope of the loss: which way a knob should move, and by how much.">
++<meta property="og:title" content="08 · The Slope · Knowledge pills">
++<meta property="og:description" content="The slope of the loss: which way a knob should move, and by how much.">
++<meta property="og:type" content="website">
+ <title>08 · The Slope · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>08</b> · the slope</span><span id="count">1 / 6</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="07-the-bowl.html">◀ Previous pill</a><a href="09-the-chain-rule.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/09-the-chain-rule.html b/site/pills/09-the-chain-rule.html
+index 208b5f7..e43729e 100644
+--- a/site/pills/09-the-chain-rule.html
++++ b/site/pills/09-the-chain-rule.html
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The chain rule: how slopes multiply along the path from a knob to the loss.">
++<meta property="og:title" content="09 · The Chain Rule · Knowledge pills">
++<meta property="og:description" content="The chain rule: how slopes multiply along the path from a knob to the loss.">
++<meta property="og:type" content="website">
+ <title>09 · The Chain Rule · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>09</b> · the chain rule</span><span id="count">1 / 6</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="08-the-slope.html">◀ Previous pill</a><a href="10-one-neuron-every-number.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/10-one-neuron-every-number.html b/site/pills/10-one-neuron-every-number.html
+index 58facfd..4de0a65 100644
+--- a/site/pills/10-one-neuron-every-number.html
++++ b/site/pills/10-one-neuron-every-number.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="One neuron followed through a forward and a backward pass, every number shown.">
++<meta property="og:title" content="10 · One Neuron, Every Number · Knowledge pills">
++<meta property="og:description" content="One neuron followed through a forward and a backward pass, every number shown.">
++<meta property="og:type" content="website">
+ <title>10 · One Neuron, Every Number · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -16,13 +19,14 @@
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>10</b> · one neuron, every number</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -32,6 +36,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="09-the-chain-rule.html">◀ Previous pill</a><a href="11-downhill.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/11-downhill.html b/site/pills/11-downhill.html
+index da8bd8f..252dff9 100644
+--- a/site/pills/11-downhill.html
++++ b/site/pills/11-downhill.html
+@@ -4,19 +4,23 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="Gradient descent: stepping downhill on the loss until the network reads digits well.">
++<meta property="og:title" content="11 · Downhill · Knowledge pills">
++<meta property="og:description" content="Gradient descent: stepping downhill on the loss until the network reads digits well.">
++<meta property="og:type" content="website">
+ <title>11 · Downhill · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>11</b> · downhill</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -26,6 +30,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="10-one-neuron-every-number.html">◀ Previous pill</a><a href="12-the-names.html">Next pill ▶</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
+diff --git a/site/pills/12-the-names.html b/site/pills/12-the-names.html
+index 26e9d10..10b3408 100644
+--- a/site/pills/12-the-names.html
++++ b/site/pills/12-the-names.html
+@@ -4,6 +4,9 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="The standard vocabulary of training a network, each word tied to something already seen.">
++<meta property="og:title" content="12 · The Names · Knowledge pills">
++<meta property="og:description" content="The standard vocabulary of training a network, each word tied to something already seen.">
++<meta property="og:type" content="website">
+ <title>12 · The Names · Knowledge pills</title>
+ <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+ <link rel="stylesheet" href="../kit/pill.css">
+@@ -15,13 +18,14 @@
+ 
+ </head>
+ <body>
++<main>
+ <div id="stage"></div>
+ <div id="labels"></div>
+ <div id="eyebrow"><span>Knowledge pill <b>12</b> · the names</span><span id="count">1 / 7</span></div>
+ <div id="deck">
+   <div id="card">
+     <h1 id="title"></h1>
+-    <p id="text"></p>
++    <p id="text" aria-live="polite"></p>
+     <div id="ledger"></div>
+   </div>
+   <div id="controls">
+@@ -31,6 +35,9 @@
+     <div id="dots" aria-hidden="true"></div>
+   </div>
+ </div>
++</main>
++<noscript><p id="noscript">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>
++<footer id="pillnav"><a href="../index.html">All pills</a><a href="11-downhill.html">◀ Previous pill</a></footer>
+ 
+ <script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+ <script type="module" src="../kit/pill.js"></script>
