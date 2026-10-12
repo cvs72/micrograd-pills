@@ -1,5 +1,9 @@
 # micrograd-pills
 
+> Unofficial, non-commercial, educational project based on Andrej Karpathy's lecture *The spelled-out intro to
+> neural networks and backpropagation: building micrograd* and his micrograd repository. All credit for the ideas
+> and the code belongs to him; see [Credits and licence](#credits-and-licence).
+
 How a neural network learns, in short animated web pages: "knowledge pills" of one to four minutes, one idea each.
 Part 1 (twelve pills) takes a reader from the map of AI to the standard vocabulary, with one real network as the
 running example throughout: a 64 → 32 → 16 → 10 digit reader trained with numpy on the UCI optdigits data. Part 2
@@ -33,3 +37,23 @@ and `names.py` read it and write their own JSON. All are deterministic (seed 42)
 
 `src/digits/optdigits.tra` and `optdigits.tes`: Optical Recognition of Handwritten Digits, UCI Machine Learning
 Repository (Alpaydin & Kaynak), 3,823 training and 1,797 test pictures of 8 × 8 pixels, values 0–16.
+
+## Credits and licence
+
+Developed by [cvs72](https://github.com/cvs72) using Claude (Anthropic): the pages were planned in conversation and
+the code and animations written by Claude Code, directed and reviewed step by step by the developer. They may
+contain errors; verify anything you rely on against the original lecture.
+
+This project is not affiliated with, endorsed by or sponsored by Andrej Karpathy. The knowledge in these pages
+follows his lecture and notebooks, which he has made publicly available:
+
+- Video: https://www.youtube.com/watch?v=VMj-3S1tku0
+- micrograd: https://github.com/karpathy/micrograd
+- nn-zero-to-hero: https://github.com/karpathy/nn-zero-to-hero
+
+Micrograd is a complete autograd engine at its smallest expression; this series builds on it, never replaces it.
+
+The pages, scripts and original content of this repository are released under the [MIT License](LICENSE). This does
+not apply to anything under `reference/`, which contains Andrej Karpathy's materials and remains under their original
+licence and copyright (`reference/micrograd/LICENSE`). Fonts and Three.js under `site/vendor/` keep their own
+licences (`site/vendor/README.md`).
