@@ -166,7 +166,12 @@ window.Pill = {
       // preview hook (?debug): fast-forward the current step by `secs` of animation time and render once, for screenshots from a hidden tab
       if (/\bdebug\b/.test(location.search)) window.__ff = secs => { const end = now + secs; while (now < end) { now += 0.05; stepAnims(); } camRadius = camRadiusGoal; camYaw = camYawGoal; camElev = camElevGoal; camTarget.copy(camGoal);
         place(0); if (r.onFrame) r.onFrame(); placeLabels(); renderer.render(scene, camera); return now; };
-      layout(); go(0, true); schedule(frame);    }
+      // firstFitBodyFallback: this pill was framed on the fallback body font; make its first fit there, then let the web font settle in
+      const root = document.documentElement.style;
+      if (r.firstFitBodyFallback) root.setProperty('--body', "'Helvetica Neue', Arial, sans-serif");
+      layout(); go(0, true);
+      root.removeProperty('--body');
+      schedule(frame);    }
 
     const K = { reduced, stage, labelsEl, deck, renderer, scene, camera, glowMat, lineMat, label, say, state, anchor, mk, placeLabels, makePanel,
       anim, pulse, later, draw, sweep, fade, glow, on, fadeIn, drawTo, easeOut, easeInOut, linear, lerp, run, clearAnims,

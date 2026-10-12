@@ -263,7 +263,7 @@ still one line. Every number on screen is recomputed from the real weights in di
 
   // ---------- camera ----------
 
-  K.run({ steps, enter, baseState, ledger: renderLedger });
+  K.run({ steps, enter, baseState, ledger: renderLedger, firstFitBodyFallback: true });
 })();
 </script>
 </body>
