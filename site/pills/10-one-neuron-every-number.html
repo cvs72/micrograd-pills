@@ -1,6 +1,6 @@
 <title>One Neuron, Every Number</title>
 <meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../vendor/fonts/fonts.css">
 <style>
   /* Pill 10: one neuron of the digit network with nothing hidden. First-row neuron 10 at the random start, reading
      the 7: 64 inputs times 64 weights, the sum and the bias, the squash, then the blame coming back and the slope of
@@ -81,7 +81,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../vendor/three/three.min.js"></script>
 <script>
 window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
 (function () {
