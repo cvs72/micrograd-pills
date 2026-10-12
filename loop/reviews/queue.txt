@@ -1,1 +1,1 @@
-K02 | skeleton | A proper document for every page: `<!doctype html>`, `<html lang="en">`, charset, viewport, a one-sentence description, the title as "NN · Name · Knowledge pills". Checks: skeleton, html-validate, captures identical.
+K03 | kit | One shared kit. Move the code that all twelve templates carry (theme tokens and layout CSS; renderer, camera and fit; labels and placeLabels; tube/cone/quads/makePanel helpers; the tween engine; the deck, dots, keyboard and player; the preview hook) into `site/kit/pill.css` and `site/kit/pill.js` (c
