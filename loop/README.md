@@ -30,7 +30,7 @@ sandbox, retry with `SHOTS_NO_SANDBOX=1` (Chromium's own sandbox off; srt still 
 ## Before the first loop
 1. Read `PLAN.md` and change any decision you disagree with; the loop stops if the plan changes while it runs.
 2. The vendored files must exist: `site/vendor/fonts/` (woff2 + fonts.css), `site/vendor/three/three.min.js`
-   (r128) and `site/vendor/three/three.module.js` (THREE_VERSION). The loop has no network; they are fetched once,
+   (r128, needed until K04 replaces it) and `site/vendor/three/three.module.js` (THREE_VERSION). The loop has no network; they are fetched once,
    attended, with their versions checked.
 3. The baseline: `node loop/tools/shots.mjs loop/baseline`, captured on the current pages, same Playwright version.
    Look at a few of the PNGs; they are the truth the loop defends. Commit them.
