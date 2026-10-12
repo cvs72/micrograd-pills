@@ -1,0 +1,59 @@
+/* The shared look of the knowledge pills: theme tokens, stage, labels, deck, ledger, controls. A pill adds only its own rules. */
+:root {
+  --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+  --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4; --bad: #fb7185;
+  --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+  --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+#stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+#labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+       transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+.lbl.on { opacity: 1; }
+.lbl.dim { color: var(--muted); opacity: .5; }
+.lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
+.lbl.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.lbl.left { text-align: left; transform-origin: left center; }
+.lbl.right { text-align: right; transform-origin: right center; }
+.lbl.head { font-family: var(--display); font-weight: 300; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.lbl.big { font-family: var(--display); font-size: 18px; font-weight: 700; }
+.lbl i { font-style: normal; color: var(--muted); font-weight: 400; }
+#eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+           font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+#eyebrow b { font-weight: 500; color: var(--fg); }
+#deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+        background: var(--bg); border-top: 1px solid var(--line); }
+#card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+#title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+#text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+#ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+          display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; font-variant-numeric: tabular-nums; }
+#ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
+#ledger .ln.now { color: var(--fg); }
+#ledger .ln.now .i { color: var(--input); }
+#ledger .ln.now .k { color: var(--knob); }
+#ledger .ln.now .s { color: var(--signal); }
+#ledger .ln.now .o { color: var(--output); }
+#ledger .ln.now .x { color: var(--bad); }
+#ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+#controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+         border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+#dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+#dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+#dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
+#dots span.done i { width: 100%; background: var(--muted); }
+#count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.big { font-size: 14px; }
+  #card { grid-template-columns: minmax(0, 1fr); }
+  #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }

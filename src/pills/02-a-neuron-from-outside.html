@@ -6,9 +6,8 @@
 <meta name="description" content="A single neuron seen from the outside: numbers go in, one number comes out.">
 <title>02 · Neuron From Outside · Knowledge pills</title>
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+<link rel="stylesheet" href="../kit/pill.css">
 <style>
-  /* Pill 02 opens on the finished onion of pill 01, greys every layer except neural networks, goes inside it to a small network,
-     then into one neuron and walks through its recipe without numbers, then back out to the network. Stage above, deck below. */
   :root {
     --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
     --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4;
@@ -17,48 +16,16 @@
     --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
     color-scheme: dark;
   }
-  html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
-  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
-  #stage canvas { display: block; width: 100%; height: 100%; }
-  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
-  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
-         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
-  .lbl.on { opacity: 1; }
   .lbl.cap { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--ink); }
   .lbl.dim { color: var(--muted); opacity: .45; }
-  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
   .lbl.tag.dim { opacity: .55; border-color: #1d2544; }
-  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
-  #eyebrow b { font-weight: 500; color: var(--fg); }
-  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
-          background: var(--bg); border-top: 1px solid var(--line); }
-  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
-  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
-  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
   #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
             display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; }
-  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
-  #ledger .ln.now { color: var(--fg); }
-  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); }
-  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
-  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
-           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
-  button:hover { border-color: var(--muted); }
-  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
-  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
-  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
-  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
-  #dots span.done i { width: 100%; background: var(--muted); }
-  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   @media (max-width: 640px) {
     #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.cap { font-size: 13px; }
     #card { grid-template-columns: minmax(0, 1fr); }
     #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
   }
-  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
 </style>
 
 </head>
@@ -81,27 +48,16 @@
 </div>
 
 <script src="../vendor/three/three.min.js"></script>
+<script src="../kit/pill.js"></script>
 <script>
-window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+/* Pill 02 opens on the finished onion of pill 01, greys every layer except neural networks, goes inside it to a small network,
+then into one neuron and walks through its recipe without numbers, then back out to the network. Stage above, deck below. */
 (function () {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const K = Pill.create({ near: 0.05, ambient: 0.75, key: 0.65, grid: [220, 110, 0, -8.6], pad: [1.45, 1.25], minRadius: 1.2, roughness: 0.4, objectScale: true });
+  const { scene, label, say, state, glowMat, lineMat, anim, later, lerp, easeInOut, fade, glow, clearAnims } = K;
 
   // ---------- scene ----------
-  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  stage.appendChild(renderer.domElement);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x090d1c);
-  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
-  const VFOV = 40;
-  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.05, 300);
-  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
-  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
-  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.75));
-  const key = new THREE.DirectionalLight(0xffffff, 0.65); key.position.set(-6, 12, 14); scene.add(key);
-  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(0, -8.6, -20); scene.add(grid);
   {
     const n = 700, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { pos[i * 3] = -60 + Math.random() * 120; pos[i * 3 + 1] = -10 + Math.random() * 30; pos[i * 3 + 2] = -20 - Math.random() * 60; }
@@ -109,27 +65,12 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
     scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x3b4a7a, size: 0.14, transparent: true, opacity: 0.8 })));
   }
   const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, body: 0x2a3561, node: 0x3a4a86, grey: 0x2b3352 };
-  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
   function sphere(r, color, pos, parent) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 40, 28), glowMat(color)); m.position.copy(pos); parent.add(m); return m; }
   function ring(color, pos, parent) { const m = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.13, 20, 48), glowMat(color)); m.position.copy(pos); m.rotation.y = Math.PI / 2; parent.add(m); return m; }
   function tube(curve, color, parent, radius) { const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, radius || 0.06, 10, false), glowMat(color)); m.material.opacity = 0.25; parent.add(m); return m; }
   function hide(m) { m.visible = false; m.material.opacity = 0; }
 
   // ---------- HTML labels anchored to objects; scale = pixels per local unit / the size the type was designed for ----------
-  const labels = [];
-  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30 }; labels.push(L); return L; }
-  function say(L, html) { L.el.innerHTML = html; }
-  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
-  const tmp = new THREE.Vector3(), sc = new THREE.Vector3();
-  function placeLabels() {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    for (const L of labels) {
-      L.obj.getWorldPosition(tmp); L.obj.getWorldScale(sc);
-      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) * sc.y / L.ref));
-      tmp.project(camera);
-      L.el.style.transform = `translate(-50%,-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
-    }
-  }
 
   // ---------- the onion from pill 01, finished ----------
   const HUES = [0x60a5fa, 0x22d3ee, 0x34d399, 0xfacc15, 0xfb923c, 0xf472b6];   // AI … LLMs, outer to inner (k = 5 … 0)
@@ -180,7 +121,6 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   const rigParts = [...M.x, ...M.tIn, ...M.k, M.bias, M.tB, M.body, M.tO, M.out];
   // the squash panel: axes, a faint straight line (what happens without a squash), the tanh curve, the ReLU hinge, a moving dot
   const panel = new THREE.Group(); panel.position.copy(P.panel); rig.add(panel);
-  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
   const mkLine = (pts, mat) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); panel.add(l); return l; };
   mkLine([new THREE.Vector3(-1.6, 0, 0), new THREE.Vector3(1.6, 0, 0)], lineMat(0x3a4670, 0.9)); mkLine([new THREE.Vector3(0, -1.35, 0), new THREE.Vector3(0, 1.35, 0)], lineMat(0x3a4670, 0.9));
   const straight = mkLine([new THREE.Vector3(-1.6, -1.2, 0), new THREE.Vector3(1.6, 1.2, 0)], lineMat(0x6b7599, 0.5));
@@ -200,17 +140,8 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   say(LB.body, 'add them up'); say(LB.bias, '+ bias'); say(LB.sq, 'squash: tanh'); say(LB.out, 'one number out'); say(LB.chain, '×  ×  ×  +  +  squash');
 
   // ---------- tiny tween engine ----------
-  const anims = []; let now = 0;
-  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
-  const lerp = (a, b, t) => a + (b - a) * t;
-  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
-  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
   function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.25 * Math.sin(Math.PI * t))); }, dur, delay); }
   function travel(orb, curve, dur, delay, after) { anim(t => { orb.visible = true; orb.position.copy(curve.getPoint(t)); if (t >= 0.999 && after) { after(); after = null; } }, dur, delay, easeInOut); }
-  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, t => t); }
-  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
-  function clearAnims() { anims.length = 0; }
 
   // ---------- the steps ----------
   const rigBox = (b) => [rig.position.x + b[0] * 0.2, rig.position.x + b[1] * 0.2, rig.position.y + b[2] * 0.2, rig.position.y + b[3] * 0.2];
@@ -349,62 +280,10 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   }
 
   // ---------- camera fitted to each step's box ----------
-  function fitRadius(box) {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
-    const pad = w < 640 ? 1.45 : 1.25;
-    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    return Math.max(halfH / tanV, halfW / (tanV * aspect), 1.2);
-  }
   // the content sits on different planes (onion z 0, network z 0.6, neuron z 0.9); the camera target must sit on the same plane or the fit is wrong
   const planeZ = i => i >= 2 && i <= 7 ? 0.9 : i === 8 ? 0.6 : i === 1 ? 0.4 : 0;
-  function setCamera(s) { camRadiusGoal = fitRadius(s.box); camYawGoal = s.yaw; camGoal.set((s.box[0] + s.box[1]) / 2, (s.box[2] + s.box[3]) / 2, planeZ(step)); }
 
-  // ---------- player ----------
-  let step = -1, playing = !reduced, stepStart = 0;
-  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
-  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
-  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
-  function go(i, instant) {
-    const prev = step;
-    step = (i + steps.length) % steps.length; stepStart = now;
-    baseState(step);
-    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
-    countEl.textContent = (step + 1) + ' / ' + steps.length;
-    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
-    layout(); setCamera(steps[step]);
-    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
-    if (prev < 0 || prev === step - 1) enter[step]();
-  }
-  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
-  document.getElementById('next').onclick = () => go(step + 1);
-  document.getElementById('prev').onclick = () => go(step - 1);
-  playBtn.onclick = () => setPlaying(!playing);
-  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
-
-  function layout() {
-    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
-    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
-    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    if (step >= 0) camRadiusGoal = fitRadius(steps[step].box);
-  }
-  window.addEventListener('resize', layout);
-
-  let last = performance.now();
-  function frame(tms) {
-    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
-    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
-    stepAnims();
-    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
-    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
-    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
-    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.06, camTarget.z + Math.cos(camYaw + drift) * camRadius);
-    camera.lookAt(camTarget);
-    placeLabels();
-    renderer.render(scene, camera);
-    schedule(frame);
-  }
-  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
-  layout(); go(0, true); schedule(frame);
+  K.run({ steps, enter, baseState, ledger: renderLedger, view: (s, i) => ({ box: s.box, yaw: s.yaw, z: planeZ(i) }) });
 })();
 </script>
 </body>

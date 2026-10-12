@@ -5,67 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="The loss as a bowl: how wrong the network is, for every setting of a knob.">
 <title>07 · The Bowl · Knowledge pills</title>
-<meta charset="utf-8">
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
-<style>
-  /* Pill 07: how wrong the network is, as one number (the loss), for one picture and for all 3,823 training pictures.
-     Against one knob the loss of the whole set is a bowl; against two knobs it is a bowl surface. Every number on screen
-     comes from digits/net.json and digits/loss.json, both produced by numpy scripts next to the training script. */
-  :root {
-    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
-    --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4; --bad: #fb7185;
-    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
-    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
-    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
-    color-scheme: dark;
-  }
-  html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
-  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
-  #stage canvas { display: block; width: 100%; height: 100%; }
-  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
-  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
-         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
-  .lbl.on { opacity: 1; }
-  .lbl.dim { color: var(--muted); opacity: .5; }
-  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
-  .lbl.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-  .lbl.left { text-align: left; transform-origin: left center; }
-  .lbl.right { text-align: right; transform-origin: right center; }
-  .lbl.head { font-family: var(--display); font-weight: 300; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-  .lbl.big { font-family: var(--display); font-size: 18px; font-weight: 700; }
-  .lbl i { font-style: normal; color: var(--muted); font-weight: 400; }
-  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
-  #eyebrow b { font-weight: 500; color: var(--fg); }
-  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
-          background: var(--bg); border-top: 1px solid var(--line); }
-  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
-  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
-  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
-  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
-            display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; font-variant-numeric: tabular-nums; }
-  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
-  #ledger .ln.now { color: var(--fg); }
-  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); } #ledger .ln.now .x { color: var(--bad); }
-  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
-  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
-           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
-  button:hover { border-color: var(--muted); }
-  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
-  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
-  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
-  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
-  #dots span.done i { width: 100%; background: var(--muted); }
-  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  @media (max-width: 640px) {
-    #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.big { font-size: 14px; }
-    #card { grid-template-columns: minmax(0, 1fr); }
-    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
-  }
-  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
-</style>
+<link rel="stylesheet" href="../kit/pill.css">
 
 </head>
 <body>
@@ -87,11 +28,15 @@
 </div>
 
 <script src="../vendor/three/three.min.js"></script>
+<script src="../kit/pill.js"></script>
 <script>
-window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+/* Pill 07: how wrong the network is, as one number (the loss), for one picture and for all 3,823 training pictures.
+Against one knob the loss of the whole set is a bowl; against two knobs it is a bowl surface. Every number on screen
+comes from digits/net.json and digits/loss.json, both produced by numpy scripts next to the training script. */
 (function () {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const K = Pill.create({ grid: [220,110,15,-8.8] });
+  const { say, state, mk, glowMat, anim, pulse, later, draw, sweep, on, clearAnims, makePanel, scene } = K;
 
   // ---------- the trained network and the loss numbers measured around it ----------
   const NET = __NET__;
@@ -111,42 +56,9 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   const pct = v => (v * 100).toFixed(2) + '%', tick = v => (v >= 0 ? '' : '−') + String(Math.abs(v)), n = v => v.toLocaleString('en');
 
   // ---------- scene ----------
-  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  stage.appendChild(renderer.domElement);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x090d1c);
-  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
-  const VFOV = 40;
-  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
-  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
-  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0, camElev = 0.06, camElevGoal = 0.06;
-  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.8));
-  const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(-6, 12, 14); scene.add(key);
-  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(15, -8.8, -20); scene.add(grid);
   const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, node: 0x3a4a86, bad: 0xfb7185, dark: 0x11182e, dim: 0x4a557a, axis: 0x3a4670, faint: 0x1e2746 };
-  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.45, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
-  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
 
   // ---------- labels ----------
-  const labels = [];
-  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30, left: (base || '').includes('left'), right: (base || '').includes('right') }; labels.push(L); return L; }
-  function say(L, html) { L.el.innerHTML = html; }
-  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
-  const tmp = new THREE.Vector3();
-  function placeLabels() {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    for (const L of labels) {
-      if (!L.el.classList.contains('on')) continue;
-      L.obj.getWorldPosition(tmp);
-      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) / L.ref));
-      tmp.project(camera);
-      L.el.style.transform = `translate(${L.left ? '0' : L.right ? '-100%' : '-50%'},-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
-    }
-  }
-  const anchor = (x, y, parent, z) => { const a = new THREE.Object3D(); a.position.set(x, y, z || 0); (parent || scene).add(a); return a; };
-  const mk = (hue, x, y, cls, parent, z) => label(hue, anchor(x, y, parent, z), cls, 30);
 
   // ---------- the three pictures with their score for the right digit ----------
   const PICX = -16.2, PICY = [4.6, 0, -4.6], TP = 0.92;
@@ -161,25 +73,6 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   });
 
   // ---------- panels ----------
-  function makePanel(o) {
-    const g = new THREE.Group(); scene.add(g);
-    const px = v => o.x0 + (v - o.xmin) / (o.xmax - o.xmin) * o.w, py = v => o.y0 + (v - o.ymin) / (o.ymax - o.ymin) * o.h;
-    const mats = [], pls = [];
-    function line(pts, color, op, z) { const m = lineMat(color, op); m.userData.op = op; const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], p[1], z || 0))), m); g.add(l); mats.push(m); return l; }
-    for (const t of o.yt) if (t !== 0) line([[o.x0 - 0.2, py(t)], [o.x0 + o.w + 0.4, py(t)]], C.faint, 0.9);
-    for (const t of o.xt) if (t !== 0) line([[px(t), o.y0 - 0.2], [px(t), o.y0 + o.h + 0.3]], C.faint, 0.9);
-    const ax = Math.max(o.ymin, Math.min(o.ymax, 0)), ay = Math.max(o.xmin, Math.min(o.xmax, 0));
-    line([[o.x0 - 0.2, py(ax)], [o.x0 + o.w + 0.4, py(ax)]], C.axis, 0.9);
-    line([[px(ay), o.y0 - 0.2], [px(ay), o.y0 + o.h + 0.3]], C.axis, 0.9);
-    for (const t of o.xt) { const L = mk('#8e99bd', px(t), o.y0 - 0.55, 'mono'); say(L, o.xf ? o.xf(t) : tick(t)); pls.push(L); }
-    for (const t of o.yt) { const L = mk('#8e99bd', o.x0 - 0.85, py(t), 'mono'); say(L, o.yf ? o.yf(t) : tick(t)); pls.push(L); }
-    const xName = mk(o.xHue, o.x0 + o.w / 2, o.y0 - 1.35, 'tag'); say(xName, o.xName); pls.push(xName);
-    const yName = mk(o.yHue, o.x0 + o.w / 2, o.y0 + o.h + 0.95, 'tag'); say(yName, o.yName); pls.push(yName);
-    const P = { g, px, py, xName, yName, add: (pts, color, z, op) => line(pts, color, op || 1, z || 0.02),
-      dot(color, r) { const d = new THREE.Mesh(new THREE.SphereGeometry(r || 0.17, 24, 16), glowMat(color || C.signal)); d.material.emissiveIntensity = 1; d.visible = false; g.add(d); return d; },
-      show(a) { g.visible = a > 0.01; for (const m of mats) m.opacity = a * m.userData.op; for (const L of pls) state(L, a > 0.5 ? 'on' : ''); } };
-    P.show(0); return P;
-  }
   const PW = 8, PH = 8, PY0 = -4;
   const P0 = makePanel({ x0: -8.0, w: PW, y0: PY0, h: PH, xmin: 0, xmax: 1, ymin: 0, ymax: 7, xt: [0, 0.25, 0.5, 0.75, 1], yt: [0, 1, 2, 3, 4, 5, 6, 7], xf: v => Math.round(v * 100) + '%', xName: 'score given to the right digit', yName: 'loss = −log(score)', xHue: '#5eead4', yHue: '#fb7185' });
   const P1 = makePanel({ x0: 12.0, w: PW, y0: PY0, h: PH, xmin: WMIN, xmax: WMAX, ymin: 0, ymax: 10, xt: [-6, -3, 0, 3, 6], yt: [0, 2, 4, 6, 8, 10], xName: 'w = the knob of pill 04', yName: 'loss of the 7 alone', xHue: '#f5b942', yHue: '#fb7185' });
@@ -231,18 +124,6 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   function setSurf(a) { surfMesh.material.opacity = a; surfWire.material.opacity = 0.35 * a; surf.visible = a > 0.01; }
 
   // ---------- tiny tween engine ----------
-  const anims = []; let now = 0;
-  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, linear = t => t;
-  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
-  const lerp = (a, b, t) => a + (b - a) * t;
-  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.3 * Math.sin(Math.PI * t))); }, dur, delay); }
-  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, linear); }
-  function draw(line, k) { line.geometry.setDrawRange(0, Math.max(line.geometry.drawRange.count, k + 1)); }
-  // sweep a dot along a curve, drawing it underneath; xs(k) gives the x value and ys(k) the y value for sample k of M
-  function sweep(P, dot, line, M, xs, ys, dur, delay, label, labelAt) { dot.visible = false; later(() => { dot.visible = true; }, delay);
-    anim(t => { const k = Math.round(t * M); dot.position.set(P.px(xs(k)), P.py(ys(k)), 0.05); draw(line, k); if (label && labelAt !== undefined && t >= labelAt) state(label, 'on'); }, dur, delay, easeInOut); }
-  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
-  function clearAnims() { anims.length = 0; }
 
   // ---------- the steps ----------
   const S1 = [-21.6, 1.4, -6.8, 7.0], S2 = [-9.6, 11.0, -6.8, 7.0], S3 = [9.6, 21.6, -6.0, 5.9], S4 = [9.6, 32.8, -6.0, 5.9], S5 = [P2.px(-1.5) - 0.6, P2.px(6) + 1.6, P2.py(0) - 1.9, P2.py(0.15) + 0.6], S6 = [SX - 13, SX + 13, SY - 4, SY + 10];
@@ -322,61 +203,8 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   }
 
   // ---------- camera ----------
-  let curBox = S1;
-  function fitRadius(box) {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
-    const pad = w < 640 ? 1.45 : 1.14;
-    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    return Math.max(halfH / tanV, halfW / (tanV * aspect), 2);
-  }
-  function setCamera(s) { curBox = s.box; camRadiusGoal = fitRadius(s.box); camYawGoal = s.yaw; camElevGoal = s.elev || 0.06; camGoal.set((s.box[0] + s.box[1]) / 2, (s.box[2] + s.box[3]) / 2, 0); }
 
-  // ---------- player ----------
-  let step = -1, playing = !reduced, stepStart = 0;
-  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
-  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
-  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
-  function go(i, instant) {
-    const prev = step;
-    step = (i + steps.length) % steps.length; stepStart = now;
-    baseState(step);
-    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
-    countEl.textContent = (step + 1) + ' / ' + steps.length;
-    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
-    layout(); setCamera(steps[step]);
-    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camElev = camElevGoal; camTarget.copy(camGoal); }
-    if (prev < 0 || prev === step - 1) enter[step]();
-  }
-  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
-  document.getElementById('next').onclick = () => go(step + 1);
-  document.getElementById('prev').onclick = () => go(step - 1);
-  playBtn.onclick = () => setPlaying(!playing);
-  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
-
-  function layout() {
-    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
-    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
-    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    if (step >= 0) camRadiusGoal = fitRadius(curBox);
-  }
-  window.addEventListener('resize', layout);
-
-  let last = performance.now();
-  function frame(tms) {
-    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
-    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
-    stepAnims();
-    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
-    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camElev = lerp(camElev, camElevGoal, k); camTarget.lerp(camGoal, k);
-    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
-    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * camElev, camTarget.z + Math.cos(camYaw + drift) * camRadius);
-    camera.lookAt(camTarget);
-    placeLabels();
-    renderer.render(scene, camera);
-    schedule(frame);
-  }
-  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
-  layout(); go(0, true); schedule(frame);
+  K.run({ steps, enter, baseState, ledger: renderLedger });
 })();
 </script>
 </body>

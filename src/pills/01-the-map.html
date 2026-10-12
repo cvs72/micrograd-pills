@@ -6,11 +6,8 @@
 <meta name="description" content="Where neural networks sit inside the map of artificial intelligence, zooming out one level at a time.">
 <title>01 · The AI Map · Knowledge pills</title>
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
+<link rel="stylesheet" href="../kit/pill.css">
 <style>
-  /* Left: a bracketed vertical list of cards, one colour per level, with the item we zoom out to on its left.
-     Right: the onion. Each step the list we were in fuses: its cards slide together, their text fades, the blob morphs into a filled disc
-     and glides onto the onion, where every disc shares the same bottom edge so each layer keeps a crescent at the top for its title.
-     Stage above, caption deck pinned below. Single dark look. Landscape first; portrait later. */
   :root {
     --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
     --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
@@ -18,50 +15,23 @@
     --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
     color-scheme: dark;
   }
-  html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
-  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
-  #stage canvas { display: block; width: 100%; height: 100%; }
-  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
-  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
-         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
   .lbl small { display: none; font-size: 10px; font-weight: 400; opacity: .8; margin-top: 1px; }
   .lbl.sub small { display: block; }
-  .lbl.on { opacity: 1; }
-  .lbl.pick { color: var(--ink); font-weight: 700; }          /* chosen items and onion titles sit on solid colour, so dark text */
+  .lbl.pick { color: var(--ink); font-weight: 700; }
   .lbl.pick small { color: var(--ink); opacity: .75; }
   .lbl.cap { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .01em; }
-  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
-  #eyebrow b { font-weight: 500; color: var(--fg); }
-  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
-          background: var(--bg); border-top: 1px solid var(--line); }
-  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
-  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
-  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
   #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
             display: grid; gap: 5px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; }
   #ledger .ln { color: var(--muted); overflow-wrap: anywhere; }
-  #ledger .ln.now { color: var(--fg); }
   #ledger .ln .seg { font-weight: 600; }
-  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
-  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
-           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
-  button:hover { border-color: var(--muted); }
   button:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
-  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
-  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
   #dots span i { position: absolute; inset: 0; width: 0; background: #facc15; }
-  #dots span.done i { width: 100%; background: var(--muted); }
-  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   @media (max-width: 640px) {
     #eyebrow { font-size: 11px; }
     .lbl { font-size: 11px; } .lbl.cap { font-size: 13px; }
     #card { grid-template-columns: minmax(0, 1fr); }
     #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
   }
-  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
 </style>
 
 </head>
@@ -84,11 +54,16 @@
 </div>
 
 <script src="../vendor/three/three.min.js"></script>
+<script src="../kit/pill.js"></script>
 <script>
-window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+/* Left: a bracketed vertical list of cards, one colour per level, with the item we zoom out to on its left.
+Right: the onion. Each step the list we were in fuses: its cards slide together, their text fades, the blob morphs into a filled disc
+and glides onto the onion, where every disc shares the same bottom edge so each layer keeps a crescent at the top for its title.
+Stage above, caption deck pinned below. Single dark look. Landscape first; portrait later. */
 (function () {
   'use strict';
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const K = Pill.create({ target: [6, 0, 0], ambient: 0.75, key: 0.65, grid: [220, 110, 20, -8.6], elev: 0.05, pad: [1.4, 1.15], minRadius: 6, objectScale: true });
+  const { scene, label, say, anchor, anim, later, lerp, easeOut, easeInOut, fade, glow, clearAnims } = K;
 
   // ---------- the lists ----------
   // Level 0 is the root (AI). Each level lists what sits inside the previous level's chosen item (marked p), chosen item in the middle.
@@ -122,21 +97,7 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   const ONION = { x: 14.5, y: -8.2, xFinal: 5.9 };
 
   // ---------- scene ----------
-  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  stage.appendChild(renderer.domElement);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x090d1c);
-  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
-  const VFOV = 40;
-  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
-  const camTarget = new THREE.Vector3(6, 0, 0), camGoal = new THREE.Vector3(6, 0, 0);
-  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
 
-  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.75));
-  const key = new THREE.DirectionalLight(0xffffff, 0.65); key.position.set(-6, 12, 14); scene.add(key);
-  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(20, ONION.y - 0.4, -20); scene.add(grid);
   {
     const n = 700, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { pos[i * 3] = -30 + Math.random() * 120; pos[i * 3 + 1] = -10 + Math.random() * 30; pos[i * 3 + 2] = -20 - Math.random() * 60; }
@@ -153,22 +114,8 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   function mat(color, opaque) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.5, metalness: 0.05, transparent: !opaque, opacity: opaque ? 1 : 0, side: THREE.DoubleSide }); }
 
   // ---------- HTML labels anchored to 3D objects, scaled with the object's size on screen ----------
-  const labels = [];
-  function label(hueCss, anchorObj, base) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj: anchorObj, base: base || '' }; labels.push(L); return L; }
-  function say(L, html) { L.el.innerHTML = html; }
   // s: '' hidden · 'on' lit; pick: dark text on solid colour; sub: show the small second line
   function state(L, s, pick, sub) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : '') + (pick ? ' pick' : '') + (sub ? ' sub' : ''); }
-  const tmp = new THREE.Vector3(), sc = new THREE.Vector3();
-  function placeLabels() {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
-    const tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    for (const L of labels) {
-      L.obj.getWorldPosition(tmp); L.obj.getWorldScale(sc);
-      const dist = tmp.distanceTo(camera.position), pxPerUnit = h / (2 * dist * tanV), s = Math.max(0.1, Math.min(2.5, pxPerUnit / 30 * sc.y));
-      tmp.project(camera);
-      L.el.style.transform = `translate(-50%,-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
-    }
-  }
 
   // ---------- build levels: a group per level with tiles, a bracket on its left edge, and a link line to its parent item ----------
   const levels = [];
@@ -240,18 +187,9 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   }
 
   // ---------- tiny tween engine ----------
-  const anims = []; let now = 0;
-  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
-  const lerp = (x, y, t) => x + (y - x) * t;
-  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
-  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
   function grow(mesh, dur, delay) { mesh.scale.setScalar(0.01); anim(t => { mesh.scale.setScalar(0.01 + 0.99 * t); }, dur, delay, t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2)); }
   function move(obj, to, dur, delay) { const from = obj.position.clone(); anim(t => { obj.position.set(lerp(from.x, to.x, t), lerp(from.y, to.y, t), lerp(from.z, to.z, t)); }, dur, delay, easeInOut); }
   function lineFade(line, to, dur, delay) { const from = line.material.opacity; anim(t => { line.material.opacity = lerp(from, to, t); line.visible = line.material.opacity > 0.01; }, dur, delay); }
-  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, t => t); }
-  function stepAnims() { for (const an of anims) { if (an.done) continue; const t = (now - an.start) / an.dur; if (t < 0) continue; const k = Math.min(1, t); an.fn(an.ease(k)); if (k >= 1) an.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
-  function clearAnims() { anims.length = 0; }
 
   // ---------- the steps ----------
   // Steps 0–5: the list we are in is level 6 − i, its parent item on the left. Each step from 1 on first fuses the previous list onto the onion. Step 6: the whole onion.
@@ -377,64 +315,8 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
 
   // ---------- camera: fixed framing of the list on the left and the onion on the right ----------
   const BOX = [-11.6, 23.6, ONION.y - 0.9, ONION.y + 2 * layerR(5) + 1.0];
-  function fitRadius(box) {
-    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
-    const pad = w < 640 ? 1.4 : 1.15;
-    const halfWd = (box[1] - box[0]) / 2 * pad, halfHt = (box[3] - box[2]) / 2 * pad;
-    const tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-    return Math.max(halfHt / tanV, halfWd / (tanV * aspect), 6);
-  }
-  function setCamera(i) { camRadiusGoal = fitRadius(BOX); camYawGoal = -0.05 + 0.02 * i; camGoal.set((BOX[0] + BOX[1]) / 2, (BOX[2] + BOX[3]) / 2, 0); }
 
-  // ---------- player ----------
-  let step = -1, playing = !reduced, stepStart = 0;
-  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
-  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
-  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
-  function go(i, instant) {
-    const prev = step;
-    step = (i + steps.length) % steps.length; stepStart = now;
-    baseState(step);
-    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
-    countEl.textContent = (step + 1) + ' / ' + steps.length;
-    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
-    layout(); setCamera(step);
-    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
-    enter(step, prev);
-  }
-  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
-  document.getElementById('next').onclick = () => go(step + 1);
-  document.getElementById('prev').onclick = () => go(step - 1);
-  playBtn.onclick = () => setPlaying(!playing);
-  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
-
-  // the stage is everything above the deck; the deck's height changes with the text, so re-measure on every step and resize
-  function layout() {
-    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
-    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
-    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    if (step >= 0) camRadiusGoal = fitRadius(BOX);
-  }
-  window.addEventListener('resize', layout);
-
-  let last = performance.now();
-  function frame(tms) {
-    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
-    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
-    stepAnims();
-    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
-    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
-    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
-    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.05, camTarget.z + Math.cos(camYaw + drift) * camRadius);
-    camera.lookAt(camTarget);
-    updateLinks();
-    placeLabels();
-    renderer.render(scene, camera);
-    schedule(frame);
-  }
-  // animation frames stop in a hidden tab; fall back to a timer so the pill keeps its place
-  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
-  layout(); go(0, true); schedule(frame);
+  K.run({ steps, enter, baseState, ledger: renderLedger, view: (s, i) => ({ box: BOX, yaw: -0.05 + 0.02 * i }), onFrame: updateLinks });
 })();
 </script>
 </body>
