@@ -1,0 +1,3 @@
+ loop/PLAN.md     | 2 +-
+ loop/progress.md | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
