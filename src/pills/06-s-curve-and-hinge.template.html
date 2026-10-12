@@ -1,0 +1,391 @@
+<title>The S-Curve And The Hinge</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Pill 06: the squash, the last step of a neuron. tanh is an S, ReLU is a hinge, both bend the straight line of the
+     previous pill, and one real weight of the trained digit network shows what the bend buys: a score that goes up, then
+     down, which no stack of lines can do. Every number on screen is recomputed from the real weights in digits/net.json. */
+  :root {
+    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+    --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4; --bad: #fb7185;
+    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+  .lbl.on { opacity: 1; }
+  .lbl.dim { color: var(--muted); opacity: .5; }
+  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
+  .lbl.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .lbl.left { text-align: left; transform-origin: left center; }
+  .lbl.right { text-align: right; transform-origin: right center; }
+  .lbl.head { font-family: var(--display); font-weight: 300; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .lbl.big { font-family: var(--display); font-size: 18px; font-weight: 700; }
+  .lbl i { font-style: normal; color: var(--muted); font-weight: 400; }
+  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+  #eyebrow b { font-weight: 500; color: var(--fg); }
+  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+          background: var(--bg); border-top: 1px solid var(--line); }
+  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+            display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; font-variant-numeric: tabular-nums; }
+  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
+  #ledger .ln.now { color: var(--fg); }
+  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); } #ledger .ln.now .x { color: var(--bad); }
+  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
+  #dots span.done i { width: 100%; background: var(--muted); }
+  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.big { font-size: 14px; }
+    #card { grid-template-columns: minmax(0, 1fr); }
+    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="eyebrow"><span>Knowledge pill <b>06</b> · the S-curve and the hinge</span><span id="count">1 / 7</span></div>
+<div id="deck">
+  <div id="card">
+    <h1 id="title"></h1>
+    <p id="text"></p>
+    <div id="ledger"></div>
+  </div>
+  <div id="controls">
+    <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
+    <button id="play" type="button" aria-label="Play or pause">Pause</button>
+    <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <div id="dots" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- the trained network: the neuron of the previous pill, a saturated neighbour, and one wire that makes a hill ----------
+  const NET = __NET__;
+  const PIC = NET.samples[2];                          // the 7 that is read as a 9
+  const x0 = PIC.pixels.map(v => v / 16);
+  const mm = (v, Wm, b) => b.map((bb, j) => { let s = bb; for (let i = 0; i < v.length; i++) s += v[i] * Wm[i][j]; return s; });
+  const z1 = mm(x0, NET.W1, NET.b1);                   // the 32 totals of the first row, before the squash
+  const J = 10, PX = 21;                               // the previous pill: neuron 10 and the pixel whose wire was turned
+  const SAT = z1.map((z, k) => ({ z, k })).sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0].k;   // the neuron furthest up the S: 23
+  const HILL = { i: 11, j: 4 };                        // turning this first-row weight makes the raw score for 7 go up, then down
+  const W0 = NET.W1[PX][J], restU = z1[J] - W0 * x0[PX], HW0 = NET.W1[HILL.i][HILL.j];
+  const relu = z => Math.max(0, z);
+  // the raw score for 7 (before the ten are turned into percentages) when the hill weight is w, with and without the squash
+  function score7(w, squash) {
+    const zz = z1.slice(); zz[HILL.j] = z1[HILL.j] + (w - HW0) * x0[HILL.i];
+    const h1 = squash ? zz.map(Math.tanh) : zz, z2 = mm(h1, NET.W2, NET.b2), h2 = squash ? z2.map(Math.tanh) : z2;
+    return mm(h2, NET.W3, NET.b3)[7];
+  }
+  const N = 120, WMIN = -6, WMAX = 6, ZMIN = -4, ZMAX = 4;
+  const wAt = k => WMIN + (WMAX - WMIN) * k / N, zAt = k => ZMIN + (ZMAX - ZMIN) * k / N;
+  const hill = Array.from({ length: N + 1 }, (_, k) => score7(wAt(k), true)), flat = Array.from({ length: N + 1 }, (_, k) => score7(wAt(k), false));
+  const peak = hill.reduce((best, v, k) => v > best.v ? { v, k } : best, { v: -1e9, k: 0 });
+  const f3 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(3), f2 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2);
+  const tick = v => (v >= 0 ? '' : '−') + String(Math.abs(v));
+
+  // ---------- scene ----------
+  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090d1c);
+  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
+  const VFOV = 40;
+  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
+  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
+  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
+  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(-6, 12, 14); scene.add(key);
+  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(10, -8.8, -20); scene.add(grid);
+  const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, node: 0x3a4a86, bad: 0xfb7185, dark: 0x11182e, dim: 0x4a557a, axis: 0x3a4670, faint: 0x1e2746 };
+  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.45, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
+  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
+
+  // ---------- labels ----------
+  const labels = [];
+  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30, left: (base || '').includes('left'), right: (base || '').includes('right') }; labels.push(L); return L; }
+  function say(L, html) { L.el.innerHTML = html; }
+  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
+  const tmp = new THREE.Vector3();
+  function placeLabels() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    for (const L of labels) {
+      if (!L.el.classList.contains('on')) continue;
+      L.obj.getWorldPosition(tmp);
+      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) / L.ref));
+      tmp.project(camera);
+      L.el.style.transform = `translate(${L.left ? '0' : L.right ? '-100%' : '-50%'},-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
+    }
+  }
+  const anchor = (x, y, parent) => { const a = new THREE.Object3D(); a.position.set(x, y, 0); (parent || scene).add(a); return a; };
+  const mk = (hue, x, y, cls, parent) => label(hue, anchor(x, y, parent), cls, 30);
+
+  // ---------- the picture, the first row of 32 neurons, the wires ----------
+  const PICX = -14.6, TP = 0.92;
+  const pic = new THREE.Group(); pic.position.set(PICX, 0, 0); scene.add(pic);
+  const tileGeo = new THREE.PlaneGeometry(0.84, 0.84), bgCol = new THREE.Color(C.dark), inCol = new THREE.Color(C.input);
+  const tileLocal = i => new THREE.Vector3((i % 8 - 3.5) * TP, (3.5 - Math.floor(i / 8)) * TP, 0);
+  const tileWorld = i => tileLocal(i).add(pic.position);
+  for (let i = 0; i < 64; i++) { const t = new THREE.Mesh(tileGeo, glowMat(C.dark)); t.material.color.copy(bgCol).lerp(inCol, x0[i]); t.material.emissive.copy(t.material.color); t.material.emissiveIntensity = 0.25 + 0.5 * x0[i]; t.position.copy(tileLocal(i)); pic.add(t); }
+  const picHead = mk('#8e99bd', 0, 4.6, 'head', pic); say(picHead, 'the 7 · 64 pixels');
+  const NX = -5.6, NP = 0.36, nPos = k => new THREE.Vector3(NX, (15.5 - k) * NP, 0);
+  const nodes = [];
+  for (let k = 0; k < 32; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), glowMat(k === J ? C.signal : C.node)); m.position.copy(nPos(k)); m.scale.setScalar(k === J ? 0.42 : 0.13); m.material.emissiveIntensity = k === J ? 0.5 : 0.1 + 0.7 * Math.abs(Math.tanh(z1[k])); scene.add(m); nodes.push(m); }
+  const colHead = mk('#8e99bd', NX, 6.6, 'head'); say(colHead, '32 neurons · first row');
+  // faint wires into neuron 10, coloured by how much each carries, as in the previous pill
+  { const pos = new Float32Array(64 * 6), col = new Float32Array(64 * 6), c = new THREE.Color(), mx = Math.max(...x0.map((v, i) => Math.abs(v * NET.W1[i][J])));
+    for (let i = 0; i < 64; i++) { const a = tileWorld(i), b = nPos(J); pos.set([a.x, a.y, 0.1, b.x, b.y, 0.1], i * 6); const s = Math.pow(Math.abs(x0[i] * NET.W1[i][J]) / mx, 0.6); c.copy(bgCol).lerp(inCol, 0.12 + 0.88 * s); col.set([c.r, c.g, c.b, c.r, c.g, c.b], i * 6); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    scene.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4 }))); }
+  function tube(i, k, color) { const a = tileWorld(i).setZ(0.12), b = nPos(k).setZ(0.12); const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a, b]), 16, 0.05, 8, false), glowMat(color)); m.material.emissiveIntensity = 0.6; m.visible = false; m.material.opacity = 0; scene.add(m);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 32), glowMat(color)); ring.position.copy(tileLocal(i)).setZ(0.11); ring.material.emissiveIntensity = 0.6; ring.visible = false; ring.material.opacity = 0; pic.add(ring); return { m, ring }; }
+  const wireU = tube(PX, J, C.knob), wireH = tube(HILL.i, HILL.j, C.output);
+  const zLabel = mk('#c084fc', NX + 2.6, nPos(J).y + 0.1, 'tag mono'); say(zLabel, `z = ${f3(z1[J])}`);
+  const zHead = mk('#8e99bd', NX + 2.6, nPos(J).y - 0.7, 'head'); say(zHead, 'before the squash');
+  const satLabel = mk('#5eead4', NX + 2.6, nPos(SAT).y, 'tag mono'); say(satLabel, `neuron ${SAT}: z = ${f2(z1[SAT])} → ${f2(Math.tanh(z1[SAT]))}`);
+  const hillLabel = mk('#5eead4', NX + 2.6, nPos(HILL.j).y, 'tag mono'); say(hillLabel, `neuron ${HILL.j} · w = ${f3(HW0)}`);
+  const recipe = ['weights = slopes', 'bias = lift', 'squash = bend'].map((t, k) => { const L = mk(['#f5b942', '#f5b942', '#c084fc'][k], NX + 2.6, nPos(J).y - 1.7 - 0.85 * k, 'tag'); say(L, t); return L; });
+
+  // ---------- panels ----------
+  function makePanel(o) {
+    const g = new THREE.Group(); scene.add(g);
+    const px = v => o.x0 + (v - o.xmin) / (o.xmax - o.xmin) * o.w, py = v => o.y0 + (v - o.ymin) / (o.ymax - o.ymin) * o.h;
+    const mats = [], pls = [];
+    function line(pts, color, op, z) { const m = lineMat(color, op); m.userData.op = op; const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], p[1], z || 0))), m); g.add(l); mats.push(m); return l; }
+    for (const t of o.yt) if (t !== 0) line([[o.x0 - 0.2, py(t)], [o.x0 + o.w + 0.4, py(t)]], C.faint, 0.9);
+    for (const t of o.xt) if (t !== 0) line([[px(t), o.y0 - 0.2], [px(t), o.y0 + o.h + 0.3]], C.faint, 0.9);
+    const ax = Math.max(o.ymin, Math.min(o.ymax, 0)), ay = Math.max(o.xmin, Math.min(o.xmax, 0));
+    line([[o.x0 - 0.2, py(ax)], [o.x0 + o.w + 0.4, py(ax)]], C.axis, 0.9);
+    line([[px(ay), o.y0 - 0.2], [px(ay), o.y0 + o.h + 0.3]], C.axis, 0.9);
+    for (const t of o.xt) { const L = mk('#8e99bd', px(t), o.y0 - 0.55, 'mono'); say(L, tick(t)); pls.push(L); }
+    for (const t of o.yt) { const L = mk('#8e99bd', o.x0 - 0.75, py(t), 'mono'); say(L, tick(t)); pls.push(L); }
+    const xName = mk(o.xHue, o.x0 + o.w / 2, o.y0 - 1.35, 'tag'); say(xName, o.xName); pls.push(xName);
+    const yName = mk(o.yHue, o.x0 + o.w / 2, o.y0 + o.h + 0.95, 'tag'); say(yName, o.yName); pls.push(yName);
+    const P = { g, px, py, xName, yName, add: (pts, color, z, op) => line(pts, color, op || 1, z || 0.02),
+      dot(color) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), glowMat(color || C.signal)); d.material.emissiveIntensity = 1; d.visible = false; g.add(d); return d; },
+      show(a) { g.visible = a > 0.01; for (const m of mats) m.opacity = a * m.userData.op; for (const L of pls) state(L, a > 0.5 ? 'on' : ''); } };
+    P.show(0); return P;
+  }
+  const PW = 8, PH = 8, PY0 = -4, GAP = 11.2;
+  const P1 = makePanel({ x0: 1.0, w: PW, y0: PY0, h: PH, xmin: ZMIN, xmax: ZMAX, ymin: -1, ymax: 1, xt: [-4, -2, 0, 2, 4], yt: [-1, -0.5, 0, 0.5, 1], xName: 'z in', yName: 'tanh(z) out', xHue: '#c084fc', yHue: '#c084fc' });
+  const P2 = makePanel({ x0: 1.0 + GAP, w: PW, y0: PY0, h: PH, xmin: ZMIN, xmax: ZMAX, ymin: -1, ymax: 4, xt: [-4, -2, 0, 2, 4], yt: [-1, 0, 1, 2, 3, 4], xName: 'z in', yName: 'ReLU(z) out', xHue: '#5eead4', yHue: '#5eead4' });
+  const P3 = makePanel({ x0: 1.0 + 2 * GAP, w: PW, y0: PY0, h: PH, xmin: WMIN, xmax: WMAX, ymin: -4, ymax: 4, xt: [-6, -3, 0, 3, 6], yt: [-4, -2, 0, 2, 4], xName: 'w = the weight on the pixel’s wire', yName: 'this neuron: z, then squashed', xHue: '#f5b942', yHue: '#c084fc' });
+  const P4 = makePanel({ x0: 1.0 + 3 * GAP, w: PW, y0: PY0, h: PH, xmin: WMIN, xmax: WMAX, ymin: 0.8, ymax: 2.8, xt: [-6, -3, 0, 3, 6], yt: [1, 1.5, 2, 2.5], xName: `w = one weight of the first row`, yName: 'raw score for 7, at the far end', xHue: '#5eead4', yHue: '#5eead4' });
+  const pts = (P, xs, f) => xs.map(x => [P.px(x), P.py(f(x))]);
+  const zs = Array.from({ length: N + 1 }, (_, k) => zAt(k)), ws = Array.from({ length: N + 1 }, (_, k) => wAt(k));
+  const L = {
+    diag: P1.add(pts(P1, [-1, 1], z => z), C.dim, 0.01, 0.8), tanh: P1.add(pts(P1, zs, Math.tanh), C.signal),
+    relu: P2.add(pts(P2, zs, relu), C.output),
+    line3: P3.add(pts(P3, ws, w => restU + x0[PX] * w), C.dim), tanh3: P3.add(pts(P3, ws, w => Math.tanh(restU + x0[PX] * w)), C.signal, 0.03), relu3: P3.add(pts(P3, ws, w => relu(restU + x0[PX] * w)), C.output, 0.03),
+    hill: P4.add(ws.map((w, k) => [P4.px(w), P4.py(hill[k])]), C.output, 0.03), flat: P4.add(ws.map((w, k) => [P4.px(w), P4.py(flat[k])]), C.dim)
+  };
+  for (const k of Object.keys(L)) if (k !== 'diag') L[k].geometry.setDrawRange(0, 0);
+  const dots = { p1: P1.dot(), p2: P2.dot(C.output), p3z: P3.dot(C.dim), p3t: P3.dot(), p3r: P3.dot(C.output), p4: P4.dot(C.output), p4f: P4.dot(C.dim) };
+  const marks = { me: P1.dot(C.knob), sat: P1.dot(C.output), hp: P4.dot(C.knob) };
+  marks.me.position.set(P1.px(z1[J]), P1.py(Math.tanh(z1[J])), 0.04); marks.sat.position.set(P1.px(z1[SAT]), P1.py(Math.tanh(z1[SAT])), 0.04); marks.hp.position.set(P4.px(HW0), P4.py(score7(HW0, true)), 0.04);
+  const tl = {
+    me: mk('#f5b942', P1.px(z1[J]) + 0.45, P1.py(Math.tanh(z1[J])) - 0.55, 'tag mono left'), sat: mk('#5eead4', P1.px(z1[SAT]) + 0.25, P1.py(Math.tanh(z1[SAT])) - 0.7, 'tag mono left'),
+    diag: mk('#8e99bd', P1.px(-2.6), P1.py(-0.42), 'tag'), flatL: mk('#8e99bd', P1.px(-2.6), P1.py(-1) + 0.6, 'tag'), flatR: mk('#8e99bd', P1.px(3.2), P1.py(1) + 0.55, 'tag'),
+    zero: mk('#5eead4', P2.px(-2), P2.py(0) + 0.6, 'tag'), self: mk('#5eead4', P2.px(-1.2), P2.py(3.5), 'tag'),
+    l3z: mk('#8e99bd', P3.px(-4.4), P3.py(restU + x0[PX] * -4.4) - 0.65, 'tag mono'), l3t: mk('#c084fc', P3.px(4.2), P3.py(1) + 0.6, 'tag mono'), l3r: mk('#5eead4', P3.px(-5.7), P3.py(0) + 0.55, 'tag mono left'),
+    l4h: mk('#5eead4', P4.px(wAt(peak.k)), P4.py(peak.v) + 0.65, 'tag'), l4f: mk('#8e99bd', P4.px(3.4), P4.py(flat[Math.round(N * 0.78)]) + 0.65, 'tag'), l4p: mk('#f5b942', P4.px(HW0) + 0.3, P4.py(score7(HW0, true)) - 0.95, 'tag mono')
+  };
+  say(tl.me, `this neuron: ${f3(z1[J])} → ${f3(Math.tanh(z1[J]))}`); say(tl.sat, `neuron ${SAT}: ${f2(z1[SAT])} → ${f2(Math.tanh(z1[SAT]))}`);
+  say(tl.diag, 'near 0: almost the line y = z'); say(tl.flatL, 'flat · slope ≈ 0'); say(tl.flatR, 'flat · slope ≈ 0');
+  say(tl.zero, '0, whatever came in'); say(tl.self, 'the number itself · slope 1');
+  say(tl.l3z, 'z: the line'); say(tl.l3t, 'tanh(z): an S'); say(tl.l3r, 'ReLU(z): 0, then the line');
+  say(tl.l4h, `with the squash: up to ${f2(peak.v)}, then down`); say(tl.l4f, 'no squash: a line, forever up'); say(tl.l4p, `now: w = ${f3(HW0)}`);
+
+  // ---------- tiny tween engine ----------
+  const anims = []; let now = 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, linear = t => t;
+  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
+  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
+  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.3 * Math.sin(Math.PI * t))); }, dur, delay); }
+  function grow(mesh, to, dur, delay) { const from = mesh.scale.x; anim(t => mesh.scale.setScalar(lerp(from, to, t)), dur, delay); }
+  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, linear); }
+  function draw(line, k) { line.geometry.setDrawRange(0, Math.max(line.geometry.drawRange.count, k + 1)); }
+  // sweep a dot along a curve from left to right, drawing the curve under it; xs are the sample points, f gives the y
+  function sweep(P, dot, line, f, dur, delay, label, labelAt) { dot.visible = false; later(() => { dot.visible = true; }, delay);
+    anim(t => { const k = Math.round(t * N); const x = P === P1 || P === P2 ? zAt(k) : wAt(k); dot.position.set(P.px(x), P.py(f(k, x)), 0.05); draw(line, k); if (label && labelAt !== undefined && t >= labelAt) state(label, 'on'); }, dur, delay, easeInOut); }
+  function light(wr, on, dur, delay) { fade(wr.m, on ? 0.95 : 0.35, dur, delay); fade(wr.ring, on ? 0.95 : 0.35, dur, delay); }
+  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
+  function clearAnims() { anims.length = 0; }
+
+  // ---------- the steps ----------
+  const LEFT = [-21.2, -2.4, -6.6, 7.4], FULL1 = [-21.2, 11.4, -6.6, 7.4], P12 = [-2.4, 1.0 + GAP + PW + 2.4, -6.0, 5.9], P23 = [1.0 + GAP - 3.4, 1.0 + 2 * GAP + PW + 2.4, -6.0, 5.9], P34 = [1.0 + 2 * GAP - 3.4, 1.0 + 3 * GAP + PW + 2.4, -6.0, 5.9];
+  const t = Math.tanh;
+  const steps = [
+    { dur: 14, title: 'The last step of the recipe', box: LEFT, yaw: -0.08,
+      text: `Multiply, add, add the bias: a straight line in every input, as the previous pill showed. Then the squash, the last step of a neuron and the one that undoes the collapse. The squash is itself a function: one number in, z, one number out. This neuron’s z is ${f3(z1[J])}; after the squash it sends on ${f3(t(z1[J]))}. Almost the same here. The squash only shows its hand further out.`,
+      line: `neuron 10: <span class="s">z = ${f3(z1[J])} → ${f3(t(z1[J]))}</span> after the squash` },
+    { dur: 18, title: 'The S-curve: tanh', box: FULL1, yaw: -0.02,
+      text: `The squash this network uses is called tanh, and its picture is an S. Near zero it is almost the line y = z: small totals pass through nearly untouched. Further out it flattens: whatever comes in, what goes out stays between −1 and 1. A total of 2 becomes ${f3(t(2))}, 4 becomes ${f3(t(4))}, and 40 becomes 1.000 as well. This neuron sits near the middle. Neuron ${SAT} of the same row, with z = ${f2(z1[SAT])}, is already at ${f2(t(z1[SAT]))}, close to the ceiling.`,
+      line: `tanh: an S, out between −1 and 1 · 2 → ${f3(t(2))} · neuron ${SAT}: <span class="o">${f2(z1[SAT])} → ${f2(t(z1[SAT]))}</span>` },
+    { dur: 16, title: 'The hinge: ReLU', box: P12, yaw: 0.04,
+      text: 'The other squash in common use is called ReLU, and its picture is a hinge. A negative total: out comes 0. A positive total: out comes the number itself, untouched. Not a range from 0 to 1: zero, or the number. A hard floor on the left, no ceiling on the right. It is also the cheapest thing a computer can do to a number, a single comparison.',
+      line: 'ReLU: a hinge · <span class="o">0, or the number itself</span>' },
+    { dur: 18, title: 'A line through the squash', box: LEFT, yaw: -0.06, box2: P23, at2: 2.6,
+      text: `Back to the line of the previous pill: turn the weight on this pixel’s wire from −6 to 6 and z runs on a straight line, from ${f2(restU + x0[PX] * WMIN)} to ${f2(restU + x0[PX] * WMAX)}. Now pass that line through the squash. Through tanh it becomes an S: flat near −1, a climb through the middle, flat near 1. Through the hinge it becomes 0 on the whole left half and the line itself on the right. Either way the line is bent, and a bent line is something new.`,
+      line: `the line z(w), <span class="s">through tanh: an S</span>, <span class="o">through ReLU: a hinge</span>` },
+    { dur: 21, title: 'What the bend buys', box: LEFT, yaw: -0.06, box2: P34, at2: 3.4,
+      text: `Pick one weight of the first row, the wire from this bright pixel to neuron ${HILL.j}, and turn it from −6 to 6 while watching the raw score for 7 at the far end of the network. With the squash in every neuron the score climbs from ${f2(hill[0])} to ${f2(peak.v)} and falls back to ${f2(hill[N])}: up, then down. No straight line can do that, and no stack of straight lines can either. Take every squash out and the same turn gives a line, ${f2(flat[0])} to ${f2(flat[N])}, forever up. The bend is what lets the rows add up to more than one line.`,
+      line: `one first-row weight: <span class="o">score for 7 up to ${f2(peak.v)}, then down</span> · no squash: a line` },
+    { dur: 18, title: 'Which squash, and why', box: P12, yaw: 0.04,
+      text: 'This small network uses tanh, and for a long time most networks did. Most large networks today use the hinge or a close cousin of it, for two reasons. The hinge is cheap, one comparison where tanh needs an exponential, and a large network does this billions of times. And the S flattens at both ends: far out, its slope is nearly zero, so big totals all look alike, and that matters for learning, which runs on slopes. The hinge keeps slope 1 on its whole right side.',
+      line: 'tanh: smooth, flat ends · ReLU: cheap, slope 1 on the right' },
+    { dur: 15, title: 'The recipe, complete', box: LEFT, yaw: -0.08,
+      text: 'Multiply, add, add the bias, squash: that is the entire neuron, and now every step has a shape. The weights are slopes, the bias is a lift, the squash is a bend. The 58 neurons of this network all do exactly this; the ten in the last row only add a squash of their own that turns ten raw scores into percentages adding up to 100. What is left is choosing the numbers: how to measure how wrong they are, and which way to turn each one.',
+      line: 'weights = slopes · bias = lift · squash = bend · 58 neurons' }
+  ];
+
+  // deterministic resting state at the start of step i
+  function baseState(i) {
+    clearAnims();
+    nodes.forEach((n, k) => { n.scale.setScalar(k === J ? 0.42 : k === SAT && i >= 1 ? 0.3 : k === HILL.j && i >= 4 ? 0.3 : 0.13); n.material.color.setHex(k === J ? C.signal : (k === SAT && i >= 1) || (k === HILL.j && i >= 4) ? C.output : C.node); n.material.emissive.copy(n.material.color); n.material.emissiveIntensity = k === J ? 0.5 : (k === SAT && i >= 1) || (k === HILL.j && i >= 4) ? 0.7 : 0.1 + 0.7 * Math.abs(t(z1[k])); });
+    const setWire = (wr, on, hot) => { wr.m.visible = on; wr.ring.visible = on; wr.m.material.opacity = on ? (hot ? 0.95 : 0.35) : 0; wr.ring.material.opacity = on ? (hot ? 0.95 : 0.35) : 0; };
+    setWire(wireU, true, i === 3); setWire(wireH, i >= 4, i === 4);
+    say(zLabel, i >= 1 ? `z = ${f3(z1[J])} → ${f3(t(z1[J]))}` : `z = ${f3(z1[J])}`); say(zHead, i >= 1 ? 'after the squash' : 'before the squash');
+    state(zLabel, i === 0 || i === 6 ? 'on' : 'dim'); state(zHead, i === 0 ? 'on' : 'dim'); state(picHead, i === 0 ? 'on' : 'dim'); state(colHead, i === 0 ? 'on' : 'dim');
+    state(satLabel, i >= 1 ? (i === 1 ? 'on' : 'dim') : ''); state(hillLabel, i >= 4 ? (i === 4 ? 'on' : 'dim') : '');
+    recipe.forEach(Lr => state(Lr, i === 6 ? 'on' : ''));
+    P1.show(i >= 1 ? 1 : 0); P2.show(i >= 2 ? 1 : 0); P3.show(i >= 3 ? 1 : 0); P4.show(i >= 4 ? 1 : 0);
+    L.tanh.geometry.setDrawRange(0, i >= 2 ? N + 1 : 0); L.relu.geometry.setDrawRange(0, i >= 3 ? N + 1 : 0);
+    for (const k of ['line3', 'tanh3', 'relu3']) L[k].geometry.setDrawRange(0, i >= 4 ? N + 1 : 0);
+    for (const k of ['hill', 'flat']) L[k].geometry.setDrawRange(0, i >= 5 ? N + 1 : 0);
+    L.tanh.material.color.setHex(i === 1 || i === 5 ? C.signal : C.dim); L.relu.material.color.setHex(i === 2 || i === 5 ? C.output : C.dim);
+    L.tanh3.material.color.setHex(i === 3 ? C.signal : C.dim); L.relu3.material.color.setHex(i === 3 ? C.output : C.dim); L.hill.material.color.setHex(i === 4 ? C.output : C.dim);
+    for (const d of Object.values(dots)) d.visible = false; L.diag.visible = i >= 1;
+    marks.me.visible = i >= 2; marks.sat.visible = i >= 2; marks.hp.visible = i >= 5;
+    const dimOn = (lab, on, hot) => state(lab, on ? (hot ? 'on' : 'dim') : '');
+    dimOn(tl.me, i >= 2, i === 1); dimOn(tl.sat, i >= 2, i === 1); dimOn(tl.diag, i >= 2, i === 1 || i === 5);
+    dimOn(tl.flatL, i >= 5, i === 5); dimOn(tl.flatR, i >= 5, i === 5); dimOn(tl.zero, i >= 3, i === 2); dimOn(tl.self, i >= 3, i === 2 || i === 5);
+    dimOn(tl.l3z, i >= 4, false); dimOn(tl.l3t, i >= 4, false); dimOn(tl.l3r, i >= 4, false);
+    dimOn(tl.l4h, i >= 5, false); dimOn(tl.l4f, i >= 5, false); dimOn(tl.l4p, i >= 5, false);
+    for (const [P, hot] of [[P1, i === 1 || i === 5], [P2, i === 2 || i === 5], [P3, i === 3], [P4, i === 4]]) if (P.g.visible) { state(P.xName, hot ? 'on' : 'dim'); state(P.yName, hot ? 'on' : 'dim'); }
+  }
+
+  const enter = [
+    () => { pulse(nodes[J], 0.9, 0.8); glow(nodes[J], 1.0, 0.5, 0.8); glow(nodes[J], 0.5, 0.8, 1.6); state(zLabel, ''); later(() => state(zLabel, 'on'), 1.4); },
+    () => { // the S is drawn; this neuron and the saturated one are marked on it, and the saturated neuron lights in the column
+      P1.show(0); anim(a => P1.show(a), 0.9, 0.3); L.tanh.geometry.setDrawRange(0, 0); L.diag.visible = false; later(() => { L.diag.visible = true; }, 7.0);
+      sweep(P1, dots.p1, L.tanh, k => t(zAt(k)), 6.0, 1.2); later(() => state(tl.diag, 'on'), 7.4);
+      marks.me.visible = false; later(() => { marks.me.visible = true; pulse(marks.me, 0.8, 0); state(tl.me, 'on'); say(zLabel, `z = ${f3(z1[J])} → ${f3(t(z1[J]))}`); say(zHead, 'after the squash'); }, 8.8);
+      nodes[SAT].scale.setScalar(0.13); nodes[SAT].material.color.setHex(C.node); nodes[SAT].material.emissive.setHex(C.node); state(satLabel, ''); marks.sat.visible = false;
+      later(() => { nodes[SAT].material.color.setHex(C.output); nodes[SAT].material.emissive.setHex(C.output); grow(nodes[SAT], 0.3, 0.6, 0); state(satLabel, 'on'); marks.sat.visible = true; pulse(marks.sat, 0.8, 0.4); state(tl.sat, 'on'); }, 11.5);
+    },
+    () => { P2.show(0); anim(a => P2.show(a), 0.9, 0.3); L.relu.geometry.setDrawRange(0, 0); state(tl.zero, ''); state(tl.self, '');
+      sweep(P2, dots.p2, L.relu, k => relu(zAt(k)), 6.0, 1.2); later(() => state(tl.zero, 'on'), 4.0); later(() => state(tl.self, 'on'), 7.6); },
+    () => { // the wire of the previous pill lights; then the camera moves to the third panel where the line, the S and the hinge are drawn in turn
+      wireU.m.material.opacity = 0.35; wireU.ring.material.opacity = 0.35; light(wireU, true, 0.6, 0.3); pulse(wireU.ring, 0.9, 0.3);
+      P3.show(0); anim(a => P3.show(a), 0.9, 2.4); for (const k of ['line3', 'tanh3', 'relu3']) L[k].geometry.setDrawRange(0, 0);
+      const zw = k => restU + x0[PX] * wAt(k);
+      sweep(P3, dots.p3z, L.line3, zw, 3.0, 3.6, tl.l3z, 0.5); sweep(P3, dots.p3t, L.tanh3, k => t(zw(k)), 4.2, 7.0, tl.l3t, 0.9); sweep(P3, dots.p3r, L.relu3, k => relu(zw(k)), 4.2, 11.4, tl.l3r, 0.3);
+    },
+    () => { // the hill wire lights; then the fourth panel draws the score with the squash, and the line without it
+      nodes[HILL.j].scale.setScalar(0.13); nodes[HILL.j].material.color.setHex(C.node); nodes[HILL.j].material.emissive.setHex(C.node); state(hillLabel, '');
+      wireH.m.material.opacity = 0; wireH.ring.material.opacity = 0; light(wireH, true, 0.7, 0.5); pulse(wireH.ring, 0.9, 0.5);
+      later(() => { nodes[HILL.j].material.color.setHex(C.output); nodes[HILL.j].material.emissive.setHex(C.output); grow(nodes[HILL.j], 0.3, 0.6, 0); state(hillLabel, 'on'); }, 1.2);
+      P4.show(0); anim(a => P4.show(a), 0.9, 3.2); for (const k of ['hill', 'flat']) L[k].geometry.setDrawRange(0, 0); marks.hp.visible = false;
+      later(() => { marks.hp.visible = true; pulse(marks.hp, 0.8, 0); state(tl.l4p, 'on'); }, 4.4);
+      sweep(P4, dots.p4, L.hill, k => hill[k], 7.0, 5.4, tl.l4h, 0.62); sweep(P4, dots.p4f, L.flat, k => flat[k], 4.0, 13.4, tl.l4f, 0.8);
+    },
+    () => { for (const k of ['flatL', 'flatR']) state(tl[k], ''); later(() => { state(tl.flatL, 'on'); state(tl.flatR, 'on'); }, 7.5); later(() => pulse(marks.sat, 0.8, 0), 8.0); state(tl.self, ''); later(() => state(tl.self, 'on'), 12.5); },
+    () => { recipe.forEach((Lr, k) => { state(Lr, ''); later(() => state(Lr, 'on'), 1.0 + 1.2 * k); }); nodes.forEach((n, k) => pulse(n, 0.6, 5.0 + k * 0.05)); }
+  ];
+
+  // ---------- ledger ----------
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the squash so far</div>';
+    for (let k = 0; k <= i; k++) { if (!steps[k].line) continue; const d = document.createElement('div'); d.className = 'ln' + (k === i ? ' now' : ''); d.innerHTML = steps[k].line; ledgerEl.appendChild(d); }
+  }
+
+  // ---------- camera ----------
+  let curBox = LEFT, curYaw = 0;
+  function fitRadius(box) {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
+    const pad = w < 640 ? 1.45 : 1.14;
+    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    return Math.max(halfH / tanV, halfW / (tanV * aspect), 2);
+  }
+  function setCamera(box, yaw) { curBox = box; curYaw = yaw; camRadiusGoal = fitRadius(box); camYawGoal = yaw; camGoal.set((box[0] + box[1]) / 2, (box[2] + box[3]) / 2, 0); }
+
+  // ---------- player ----------
+  let step = -1, playing = !reduced, stepStart = 0;
+  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
+  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+  function go(i, instant) {
+    const prev = step;
+    step = (i + steps.length) % steps.length; stepStart = now;
+    baseState(step);
+    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
+    countEl.textContent = (step + 1) + ' / ' + steps.length;
+    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
+    const s = steps[step], forward = prev < 0 || prev === step - 1;
+    layout(); setCamera(forward || !s.box2 ? s.box : s.box2, s.yaw);
+    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
+    if (forward) { enter[step](); if (s.box2) later(() => setCamera(s.box2, s.yaw), s.at2); }
+  }
+  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
+  document.getElementById('next').onclick = () => go(step + 1);
+  document.getElementById('prev').onclick = () => go(step - 1);
+  playBtn.onclick = () => setPlaying(!playing);
+  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+
+  function layout() {
+    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
+    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
+    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (step >= 0) camRadiusGoal = fitRadius(curBox);
+  }
+  window.addEventListener('resize', layout);
+
+  let last = performance.now();
+  function frame(tms) {
+    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
+    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
+    stepAnims();
+    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
+    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
+    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
+    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.06, camTarget.z + Math.cos(camYaw + drift) * camRadius);
+    camera.lookAt(camTarget);
+    placeLabels();
+    renderer.render(scene, camera);
+    schedule(frame);
+  }
+  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
+  layout(); go(0, true); schedule(frame);
+})();
+</script>

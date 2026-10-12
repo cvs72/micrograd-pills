@@ -1,0 +1,401 @@
+<title>Neuron From Outside</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Pill 02 opens on the finished onion of pill 01, greys every layer except neural networks, goes inside it to a small network,
+     then into one neuron and walks through its recipe without numbers, then back out to the network. Stage above, deck below. */
+  :root {
+    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+    --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4;
+    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+  .lbl.on { opacity: 1; }
+  .lbl.cap { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--ink); }
+  .lbl.dim { color: var(--muted); opacity: .45; }
+  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
+  .lbl.tag.dim { opacity: .55; border-color: #1d2544; }
+  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+  #eyebrow b { font-weight: 500; color: var(--fg); }
+  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+          background: var(--bg); border-top: 1px solid var(--line); }
+  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+            display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; }
+  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
+  #ledger .ln.now { color: var(--fg); }
+  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); }
+  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
+  #dots span.done i { width: 100%; background: var(--muted); }
+  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.cap { font-size: 13px; }
+    #card { grid-template-columns: minmax(0, 1fr); }
+    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="eyebrow"><span>Knowledge pill <b>02</b> · a neuron from the outside</span><span id="count">1 / 9</span></div>
+<div id="deck">
+  <div id="card">
+    <h1 id="title"></h1>
+    <p id="text"></p>
+    <div id="ledger"></div>
+  </div>
+  <div id="controls">
+    <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
+    <button id="play" type="button" aria-label="Play or pause">Pause</button>
+    <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <div id="dots" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- scene ----------
+  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090d1c);
+  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
+  const VFOV = 40;
+  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.05, 300);
+  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
+  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
+  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.65); key.position.set(-6, 12, 14); scene.add(key);
+  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(0, -8.6, -20); scene.add(grid);
+  {
+    const n = 700, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = -60 + Math.random() * 120; pos[i * 3 + 1] = -10 + Math.random() * 30; pos[i * 3 + 2] = -20 - Math.random() * 60; }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x3b4a7a, size: 0.14, transparent: true, opacity: 0.8 })));
+  }
+  const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, body: 0x2a3561, node: 0x3a4a86, grey: 0x2b3352 };
+  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
+  function sphere(r, color, pos, parent) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 40, 28), glowMat(color)); m.position.copy(pos); parent.add(m); return m; }
+  function ring(color, pos, parent) { const m = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.13, 20, 48), glowMat(color)); m.position.copy(pos); m.rotation.y = Math.PI / 2; parent.add(m); return m; }
+  function tube(curve, color, parent, radius) { const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, radius || 0.06, 10, false), glowMat(color)); m.material.opacity = 0.25; parent.add(m); return m; }
+  function hide(m) { m.visible = false; m.material.opacity = 0; }
+
+  // ---------- HTML labels anchored to objects; scale = pixels per local unit / the size the type was designed for ----------
+  const labels = [];
+  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30 }; labels.push(L); return L; }
+  function say(L, html) { L.el.innerHTML = html; }
+  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
+  const tmp = new THREE.Vector3(), sc = new THREE.Vector3();
+  function placeLabels() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    for (const L of labels) {
+      L.obj.getWorldPosition(tmp); L.obj.getWorldScale(sc);
+      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) * sc.y / L.ref));
+      tmp.project(camera);
+      L.el.style.transform = `translate(-50%,-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
+    }
+  }
+
+  // ---------- the onion from pill 01, finished ----------
+  const HUES = [0x60a5fa, 0x22d3ee, 0x34d399, 0xfacc15, 0xfb923c, 0xf472b6];   // AI … LLMs, outer to inner (k = 5 … 0)
+  const HUE_CSS = ['#60a5fa', '#22d3ee', '#34d399', '#facc15', '#fb923c', '#f472b6'];
+  const TITLES = ['LLMs', 'Generative AI', 'Deep learning', 'Neural networks', 'Machine learning', 'Artificial intelligence'];
+  const R0 = 1.7, RW = 1.35, layerR = k => R0 + RW * k;
+  const onion = new THREE.Group(); onion.position.set(0, -8.2, 0); scene.add(onion);
+  const layers = TITLES.map((t, k) => {
+    const r = layerR(k), hue = HUES[5 - k];
+    const m = new THREE.Mesh(new THREE.CircleGeometry(r, 96), glowMat(hue)); m.material.emissiveIntensity = 0.22; m.position.set(0, r, -0.06 * k); onion.add(m);
+    const a = new THREE.Object3D(); a.position.set(0, k === 0 ? r : 2 * r - RW / 2 - 0.02, -0.06 * k + 0.02); onion.add(a);
+    const L = label(HUE_CSS[5 - k], a, 'cap', 30); say(L, t);
+    return { k, r, mesh: m, hue: new THREE.Color(hue), lbl: L };
+  });
+  const NN = layers[3], NNC = new THREE.Vector3(0, -8.2 + NN.r, 0);   // the neural-networks disc and its centre
+  const greyCol = new THREE.Color(C.grey);
+  function setLayer(L, t, op) { L.mesh.material.color.lerpColors(L.hue, greyCol, t); L.mesh.material.emissive.copy(L.mesh.material.color); L.mesh.material.emissiveIntensity = 0.22 * (1 - t); L.mesh.material.opacity = op; L.mesh.visible = op > 0.01; }
+
+  // ---------- a small network inside the neural-networks disc ----------
+  const net = new THREE.Group(); net.position.set(NNC.x, NNC.y, 0.6); scene.add(net);
+  const ROWS = [[-3.6, [-2.2, 0, 2.2]], [-1.2, [-2.7, -0.9, 0.9, 2.7]], [1.2, [-2.7, -0.9, 0.9, 2.7]], [3.6, [-1.1, 1.1]]];
+  const nodes = [], wires = [];
+  ROWS.forEach(([x, ys], r) => { ys.forEach(y => { const col = r === 0 ? C.input : r === ROWS.length - 1 ? C.output : C.node; const m = sphere(0.3, col, new THREE.Vector3(x, y, 0), net); m.userData.row = r; nodes.push(m); }); });
+  for (let r = 0; r < ROWS.length - 1; r++) for (const a of nodes.filter(n => n.userData.row === r)) for (const b of nodes.filter(n => n.userData.row === r + 1)) { const w = tube(new THREE.CatmullRomCurve3([a.position, b.position]), C.node, net, 0.03); w.userData.row = r; wires.push(w); }
+  const chosen = nodes.filter(n => n.userData.row === 1)[1];
+  const netAnchor = new THREE.Object3D(); netAnchor.position.set(0, 3.5, 0); net.add(netAnchor);
+  const LBnet = label('#8e99bd', netAnchor, 'tag', 60); say(LBnet, 'a neural network · rows of neurons, each row feeding the next');
+  function setNet(op, em) { for (const n of nodes) { n.material.opacity = op; n.visible = op > 0.01; n.material.emissiveIntensity = em; n.scale.setScalar(1); } for (const w of wires) { w.material.opacity = 0.35 * op; w.visible = op > 0.01; } }
+
+  // ---------- one neuron, built around the chosen node at a fifth of the network's scale ----------
+  const rig = new THREE.Group(); rig.position.set(NNC.x + chosen.position.x, NNC.y + chosen.position.y, 0.9); rig.scale.setScalar(0.2); scene.add(rig);
+  const P = {
+    x: [new THREE.Vector3(-6.5, 2.3, 0), new THREE.Vector3(-6.5, 0, 0), new THREE.Vector3(-6.5, -2.3, 0)],
+    k: [new THREE.Vector3(-3.3, 1.25, 0.3), new THREE.Vector3(-3.3, 0, 0.3), new THREE.Vector3(-3.3, -1.25, 0.3)],
+    body: new THREE.Vector3(0, 0, 0), bias: new THREE.Vector3(0, -2.6, 0.2), panel: new THREE.Vector3(4.0, 0.1, 0), out: new THREE.Vector3(7.4, 0, 0)
+  };
+  const wiresIn = P.x.map((x, i) => new THREE.CatmullRomCurve3([x, P.k[i], P.body]));
+  const wireB = new THREE.CatmullRomCurve3([P.bias, new THREE.Vector3(0, -1.3, 0.1), P.body]);
+  const wireO = new THREE.CatmullRomCurve3([P.body, P.panel, P.out]);
+  const M = {
+    x: P.x.map(p => sphere(0.5, C.input, p, rig)), tIn: wiresIn.map(w => tube(w, C.input, rig)),
+    k: P.k.map(p => ring(C.knob, p, rig)), bias: ring(C.knob, P.bias, rig), tB: tube(wireB, C.knob, rig),
+    body: sphere(1.15, C.body, P.body, rig), tO: tube(wireO, C.output, rig), out: sphere(0.55, C.output, P.out, rig),
+    orbs: P.x.map(p => sphere(0.17, C.signal, p, rig)), orbB: sphere(0.17, C.signal, P.bias, rig), orbO: sphere(0.17, C.signal, P.body, rig)
+  };
+  M.bias.rotation.set(Math.PI / 2, 0, 0);
+  for (const o of M.orbs.concat([M.orbB, M.orbO])) { o.material.emissiveIntensity = 1.0; o.visible = false; }
+  const rigParts = [...M.x, ...M.tIn, ...M.k, M.bias, M.tB, M.body, M.tO, M.out];
+  // the squash panel: axes, a faint straight line (what happens without a squash), the tanh curve, the ReLU hinge, a moving dot
+  const panel = new THREE.Group(); panel.position.copy(P.panel); rig.add(panel);
+  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
+  const mkLine = (pts, mat) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); panel.add(l); return l; };
+  mkLine([new THREE.Vector3(-1.6, 0, 0), new THREE.Vector3(1.6, 0, 0)], lineMat(0x3a4670, 0.9)); mkLine([new THREE.Vector3(0, -1.35, 0), new THREE.Vector3(0, 1.35, 0)], lineMat(0x3a4670, 0.9));
+  const straight = mkLine([new THREE.Vector3(-1.6, -1.2, 0), new THREE.Vector3(1.6, 1.2, 0)], lineMat(0x6b7599, 0.5));
+  const tanhPts = [], reluPts = []; for (let i = 0; i <= 80; i++) { const x = -3.2 + 6.4 * i / 80; tanhPts.push(new THREE.Vector3(x * 0.5, Math.tanh(x) * 1.2, 0)); reluPts.push(new THREE.Vector3(x * 0.5, Math.max(0, x) * 0.42, 0)); }
+  const tanhLine = mkLine(tanhPts, lineMat(C.output, 1)), reluLine = mkLine(reluPts, lineMat(C.knob, 1));
+  const dot = sphere(0.11, C.signal, new THREE.Vector3(-1.6, -1.2, 0), panel); dot.material.emissiveIntensity = 1.6;
+  function setPanel(a, tanhOp, reluOp, lineOp) { panel.visible = a > 0.01; for (const o of panel.children) if (o.material) o.material.opacity = a * (o === tanhLine ? tanhOp : o === reluLine ? reluOp : o === straight ? lineOp : o === dot ? 1 : 0.9); dot.visible = a > 0.01 && dot.material.opacity > 0.01; }
+  // labels on the rig (anchored to rig objects, designed for ~55 px per rig unit)
+  const anchor = (x, y, z) => { const a = new THREE.Object3D(); a.position.set(x, y, z || 0); rig.add(a); return a; };
+  const LB = {
+    x: P.x.map(p => { const L = label('#4fd1ff', anchor(p.x, p.y + 0.95), 'tag', 55); say(L, 'a number'); return L; }),
+    k: P.k.map((p, i) => { const L = label('#f5b942', anchor(p.x, p.y + (i === 0 ? 1.0 : i === 2 ? -1.0 : 0.95)), 'tag', 55); say(L, '× weight'); return L; }),
+    body: label('#c084fc', anchor(0, 1.75), 'tag', 55), bias: label('#f5b942', anchor(0.9, -2.75), 'tag', 55),
+    sq: label('#5eead4', anchor(4.0, 1.95), 'tag', 55), out: label('#5eead4', anchor(7.4, 0.95), 'tag', 55),
+    chain: label('#8e99bd', anchor(0.4, -3.4), 'tag', 55)
+  };
+  say(LB.body, 'add them up'); say(LB.bias, '+ bias'); say(LB.sq, 'squash: tanh'); say(LB.out, 'one number out'); say(LB.chain, '×  ×  ×  +  +  squash');
+
+  // ---------- tiny tween engine ----------
+  const anims = []; let now = 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
+  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
+  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.25 * Math.sin(Math.PI * t))); }, dur, delay); }
+  function travel(orb, curve, dur, delay, after) { anim(t => { orb.visible = true; orb.position.copy(curve.getPoint(t)); if (t >= 0.999 && after) { after(); after = null; } }, dur, delay, easeInOut); }
+  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, t => t); }
+  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
+  function clearAnims() { anims.length = 0; }
+
+  // ---------- the steps ----------
+  const rigBox = (b) => [rig.position.x + b[0] * 0.2, rig.position.x + b[1] * 0.2, rig.position.y + b[2] * 0.2, rig.position.y + b[3] * 0.2];
+  const steps = [
+    { dur: 15, title: 'After the map', box: [-9.6, 9.6, -9.1, 9.7], yaw: 0,
+      text: 'After the map we have a better idea of what sits inside AI. The part that matters for us is the centre: what the language models are built from. Trace the layers inward and we reach machine learning, and inside it neural networks. Everything else can go grey for now.',
+      line: 'AI ⊃ machine learning ⊃ <span class="o">neural networks</span>' },
+    { dur: 13, title: 'A very large network', box: [-6.4, 6.4, -8.6, 3.7], yaw: 0.06,
+      text: 'A language model is a very large neural network with a particular wiring. Rows of small units, each row feeding the next. And a network can be stripped down to its smallest part: one unit, a neuron. Everything the network does is this unit, repeated.',
+      line: 'language model = a very large network of neurons' },
+    { dur: 12, title: 'A neuron', box: null, rb: [-7.8, 2.0, -3.6, 3.4], yaw: -0.14,
+      text: 'A neuron is a short series of calculations in a fixed order. Numbers come in. Several of them, each on its own wire: in a real network, the outputs of the row before. The neuron receives them and cannot change them.',
+      line: '<span class="i">numbers in</span>, one per wire' },
+    { dur: 13, title: 'Weights', box: null, rb: [-7.8, 2.0, -3.6, 3.4], yaw: -0.1,
+      text: 'Each number is multiplied by a weight: a number that decides how much that input counts. Near zero, the input is ignored. Large, it dominates. Negative, it is flipped. One weight per wire, and the weights belong to the neuron.',
+      line: 'each <span class="i">number</span> × its <span class="k">weight</span>' },
+    { dur: 12, title: 'Add them up, add the bias', box: null, rb: [-7.8, 2.0, -3.8, 3.4], yaw: 0,
+      text: 'The results are added up into one total. Then one more number, the bias, is added to that total whatever the inputs were. It lets the neuron lean towards yes or no before it has looked at anything. One bias per neuron.',
+      line: '<span class="s">add them up</span> + <span class="k">bias</span>' },
+    { dur: 16, title: 'Squash: tanh', box: null, rb: [-7.8, 8.8, -3.8, 3.6], yaw: 0.18,
+      text: 'That total is then squashed. For decades the squash was tanh, a fixed curve that bends any number into the range from minus one to one. The bend is the point: without it, rows of neurons would collapse into one straight line and could not learn anything curved.',
+      line: '<span class="o">squash</span>: tanh, bends into −1 … 1' },
+    { dur: 14, title: 'Squash: ReLU', box: null, rb: [-7.8, 8.8, -3.8, 3.6], yaw: 0.18,
+      text: 'Today most networks use ReLU instead. It does the same job more cheaply: negative numbers become zero, positive numbers pass through unchanged. And it keeps the learning signal alive through many layers, where tanh goes flat at both ends and the signal fades.',
+      line: '<span class="o">squash</span>: ReLU, 0 or the number itself' },
+    { dur: 10, title: 'One output', box: null, rb: [-7.8, 8.8, -3.8, 3.6], yaw: 0.06,
+      text: 'Out of all that comes one number: the neuron’s output. That is all the next row will ever see of it. The weights, the sum, the bias and the squash stay inside.',
+      line: '<span class="o">one number out</span>' },
+    { dur: 16, title: 'A network repeats it', box: [-4.6, 4.6, -3.6, 3.6], yaw: 0,
+      text: 'A network repeats this little calculation for every neuron, in rows, with the outputs of one row feeding the next. In a language model that is millions of neurons and billions of weights. Every one of those weights is a number that training will adjust. The next pills show how.',
+      line: 'repeat for every neuron, row after row · the weights are what training adjusts' }
+  ];
+  for (const s of steps) if (s.rb) s.box = rigBox(s.rb);
+  steps[8].box = [NNC.x + steps[8].box[0], NNC.x + steps[8].box[1], NNC.y + steps[8].box[2], NNC.y + steps[8].box[3]];
+
+  // deterministic resting state at the start of step i
+  function baseState(i) {
+    clearAnims();
+    const set = (m, on, op, em) => { m.visible = on; m.material.opacity = on ? op : 0; m.material.emissiveIntensity = on ? em : 0; m.scale.setScalar(1); };
+    // onion: lit on step 0; from step 1 everything but neural networks is grey; from step 2 the NN disc is a faint backdrop
+    layers.forEach(L => { const isNN = L === NN; const grey = i >= 1 && !isNN; setLayer(L, grey ? 1 : 0, i >= 2 ? (isNN ? 0.12 : 0.25) : 1); state(L.lbl, i === 0 ? 'on' : isNN && i === 1 ? 'on' : ''); });
+    // network: lit on step 1 (chosen neuron brighter) and on step 8
+    const netOn = i === 1 || i === 8;
+    setNet(netOn ? 1 : 0, i === 1 ? 0.2 : 0.5); if (i === 1) chosen.material.emissiveIntensity = 1.0;
+    state(LBnet, i === 8 ? 'on' : '');
+    // rig: parts appear step by step and stay
+    const inRig = i >= 2 && i <= 7, knobs = i >= 3, summed = i >= 4, squashed = i >= 5, relu = i >= 6, outp = i >= 7;
+    for (const m of rigParts) hide(m);
+    for (const o of M.orbs.concat([M.orbB, M.orbO])) o.visible = false;
+    if (inRig) {
+      M.x.forEach(m => set(m, true, 1, i === 2 ? 0.9 : 0.3)); M.tIn.forEach(m => set(m, true, 0.6, 0.4));
+      M.k.forEach(m => set(m, knobs, 1, i === 3 ? 1.1 : 0.7));
+      set(M.body, true, 1, summed ? 0.55 : 0.08); M.body.material.color.setHex(summed ? C.signal : C.body); M.body.material.emissive.setHex(summed ? C.signal : C.body);
+      set(M.bias, summed, 1, i === 4 ? 1.1 : 0.7); set(M.tB, summed, 0.6, 0.4);
+      set(M.tO, squashed, 0.6, 0.4); set(M.out, outp, 1, 1.0);
+      if (i === 2 || i === 3) M.orbs.forEach((o, j) => { o.visible = true; o.position.copy(P.k[j]); });
+    }
+    setPanel(inRig && squashed ? 1 : 0, relu ? 0.25 : 1, relu ? 1 : 0, 0.5);
+    dot.position.set(relu ? 0.9 : 0.5, relu ? 0.9 * 2 * 0.42 : Math.tanh(1.0) * 1.2, 0);
+    LB.x.forEach(L => state(L, inRig ? (i === 2 ? 'on' : 'dim') : ''));
+    LB.k.forEach(L => state(L, inRig && knobs ? (i === 3 ? 'on' : 'dim') : ''));
+    state(LB.body, inRig && summed ? (i === 4 ? 'on' : 'dim') : ''); state(LB.bias, inRig && summed ? (i === 4 ? 'on' : 'dim') : '');
+    say(LB.sq, relu ? 'squash: ReLU' : 'squash: tanh'); state(LB.sq, inRig && squashed ? (i === 5 || i === 6 ? 'on' : 'dim') : '');
+    state(LB.out, inRig && outp ? 'on' : ''); state(LB.chain, i === 7 ? 'on' : '');
+  }
+
+  const enter = [
+    () => { // grey the onion from the outside in, then from the inside out, leaving neural networks lit
+      layers.forEach(L => setLayer(L, 0, 1));
+      const order = [5, 4, 0, 1, 2];
+      order.forEach((k, j) => { const L = layers[k]; anim(t => setLayer(L, t, 1), 0.9, 1.0 + j * 0.7); later(() => state(L.lbl, 'dim'), 1.2 + j * 0.7); });
+      later(() => { pulse(NN.mesh, 0.8, 0); glow(NN.mesh, 0.5, 0.5, 0); glow(NN.mesh, 0.22, 0.6, 0.6); }, 4.8);
+    },
+    () => { // into the disc: it fades to a backdrop while the network grows inside it
+      setLayer(NN, 0, 1); anim(t => setLayer(NN, 0, lerp(1, 0.12, t)), 1.2, 0.6);
+      layers.forEach(L => { if (L !== NN) anim(t => setLayer(L, 1, lerp(1, 0.25, t)), 1.2, 0.6); });
+      state(NN.lbl, 'on'); later(() => state(NN.lbl, ''), 1.0);
+      setNet(0, 0.2); for (const n of nodes) n.scale.setScalar(0.01);
+      anim(t => { for (const n of nodes) { n.material.opacity = t; n.visible = t > 0.01; n.scale.setScalar(0.01 + 0.99 * t); } }, 1.2, 1.4);
+      anim(t => { for (const w of wires) { w.material.opacity = 0.35 * t; w.visible = t > 0.01; } }, 1.2, 2.0);
+      chosen.material.emissiveIntensity = 0.2; later(() => { glow(chosen, 1.0, 0.6, 0); pulse(chosen, 0.9, 0); }, 4.2);
+    },
+    () => { // into the neuron: the network fades, the rig appears, three numbers arrive and wait on their wires
+      setNet(1, 0.2); chosen.material.emissiveIntensity = 1.0; anim(t => setNet(1 - t, 0.2), 0.9, 0.2);
+      M.x.forEach(m => { m.material.opacity = 0; fade(m, 1, 0.6, 0.9); }); M.tIn.forEach(m => { m.material.opacity = 0; fade(m, 0.6, 0.6, 1.0); }); M.body.material.opacity = 0; fade(M.body, 1, 0.6, 1.0);
+      M.orbs.forEach((o, j) => { o.visible = false; travel(o, new THREE.CatmullRomCurve3([P.x[j], P.k[j]]), 1.4, 1.8 + j * 0.5); });
+      LB.x.forEach(L => state(L, '')); LB.x.forEach((L, j) => later(() => state(L, 'on'), 1.6 + j * 0.5));
+    },
+    () => { // the weights appear around the waiting numbers and spin
+      M.k.forEach((m, j) => { m.material.opacity = 0; fade(m, 1, 0.6, 0.3 + j * 0.4); anim(t => { m.rotation.x = t * Math.PI * 2; }, 2.0, 0.4 + j * 0.4); });
+      LB.k.forEach(L => state(L, '')); LB.k.forEach((L, j) => later(() => state(L, 'on'), 0.9 + j * 0.4));
+    },
+    () => { // the numbers go on to the body and are added; the bias arrives from below
+      M.body.material.color.setHex(C.body); M.body.material.emissive.setHex(C.body); M.body.material.emissiveIntensity = 0.08;
+      M.orbs.forEach((o, j) => { o.visible = true; o.position.copy(P.k[j]); travel(o, new THREE.CatmullRomCurve3([P.k[j], P.body]), 1.2, 0.3 + j * 0.3, j === 2 ? () => {
+        const a = new THREE.Color(C.body), b = new THREE.Color(C.signal);
+        anim(t => { M.body.material.color.lerpColors(a, b, t); M.body.material.emissive.copy(M.body.material.color); M.body.material.emissiveIntensity = lerp(0.08, 0.55, t); }, 1.0, 0); pulse(M.body, 0.9, 0);
+        M.orbs.forEach(oo => { oo.visible = false; });
+      } : null); });
+      state(LB.body, ''); later(() => state(LB.body, 'on'), 2.0);
+      M.bias.material.opacity = M.tB.material.opacity = 0; fade(M.bias, 1, 0.6, 2.4); fade(M.tB, 0.6, 0.6, 2.6); anim(t => { M.bias.rotation.z = t * Math.PI * 2; }, 1.8, 2.5);
+      state(LB.bias, ''); later(() => state(LB.bias, 'on'), 3.0);
+      travel(M.orbB, wireB, 1.3, 3.6, () => { pulse(M.body, 0.8, 0); M.orbB.visible = false; });
+    },
+    () => { // the squash panel: first the straight line, then the tanh bend, then a dot riding the curve
+      setPanel(0, 1, 0, 0.5); anim(t => setPanel(t, 0, 0, 0.5), 0.8, 0.3);
+      anim(t => setPanel(1, t, 0, 0.5), 0.9, 1.6);
+      state(LB.sq, ''); later(() => state(LB.sq, 'on'), 2.2);
+      dot.position.set(-1.6, -1.2, 0); anim(t => { const x = lerp(-3.2, 2.0, t); dot.position.set(x * 0.5, Math.tanh(x) * 1.2, 0); }, 3.0, 2.8);
+      M.tO.material.opacity = 0; fade(M.tO, 0.6, 0.8, 1.0);
+    },
+    () => { // tanh fades back, the ReLU hinge takes its place, the dot rides the hinge
+      setPanel(1, 1, 0, 0.5); anim(t => setPanel(1, lerp(1, 0.25, t), t, 0.5), 1.2, 0.6);
+      say(LB.sq, 'squash: tanh'); later(() => say(LB.sq, 'squash: ReLU'), 1.0);
+      dot.position.set(-1.6, 0, 0); anim(t => { const x = lerp(-3.2, 1.8, t); dot.position.set(x * 0.5, Math.max(0, x) * 0.42, 0); }, 3.0, 2.0);
+    },
+    () => { // one number leaves
+      M.out.material.opacity = 0; M.out.material.emissiveIntensity = 0; state(LB.out, ''); state(LB.chain, '');
+      travel(M.orbO, new THREE.CatmullRomCurve3([P.panel, P.out]), 1.2, 0.5, () => { fade(M.out, 1, 0.3, 0); glow(M.out, 1.0, 0.6, 0); pulse(M.out, 0.9, 0); state(LB.out, 'on'); M.orbO.visible = false; });
+      later(() => state(LB.chain, 'on'), 2.4);
+    },
+    () => { // back out: the rig dissolves, the network returns and lights row by row
+      baseState(7); for (const L of Object.values(LB).flat()) state(L, ''); state(LB.sq, '');
+      for (const m of rigParts) fade(m, 0, 0.8, 0.2); anim(t => setPanel(1 - t, 0.25, 1, 0.5), 0.8, 0.2);
+      setNet(0, 0.2); anim(t => setNet(t, 0.2), 1.2, 1.0);
+      for (let r = 0; r < ROWS.length; r++) { for (const n of nodes) if (n.userData.row === r) { glow(n, 1.1, 0.4, 2.4 + r * 0.6); glow(n, 0.5, 0.6, 2.9 + r * 0.6); pulse(n, 0.6, 2.4 + r * 0.6); } for (const w of wires) if (w.userData.row === r) { anim(t => { w.material.opacity = 0.35 + 0.5 * Math.sin(Math.PI * t); }, 0.8, 2.7 + r * 0.6); } }
+      later(() => state(LBnet, 'on'), 3.0);
+    }
+  ];
+
+  // ---------- ledger: the recipe so far, every line stays ----------
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the recipe so far</div>';
+    for (let k = 0; k <= i; k++) { const d = document.createElement('div'); d.className = 'ln' + (k === i ? ' now' : ''); d.innerHTML = steps[k].line; ledgerEl.appendChild(d); }
+  }
+
+  // ---------- camera fitted to each step's box ----------
+  function fitRadius(box) {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
+    const pad = w < 640 ? 1.45 : 1.25;
+    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    return Math.max(halfH / tanV, halfW / (tanV * aspect), 1.2);
+  }
+  // the content sits on different planes (onion z 0, network z 0.6, neuron z 0.9); the camera target must sit on the same plane or the fit is wrong
+  const planeZ = i => i >= 2 && i <= 7 ? 0.9 : i === 8 ? 0.6 : i === 1 ? 0.4 : 0;
+  function setCamera(s) { camRadiusGoal = fitRadius(s.box); camYawGoal = s.yaw; camGoal.set((s.box[0] + s.box[1]) / 2, (s.box[2] + s.box[3]) / 2, planeZ(step)); }
+
+  // ---------- player ----------
+  let step = -1, playing = !reduced, stepStart = 0;
+  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
+  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+  function go(i, instant) {
+    const prev = step;
+    step = (i + steps.length) % steps.length; stepStart = now;
+    baseState(step);
+    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
+    countEl.textContent = (step + 1) + ' / ' + steps.length;
+    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
+    layout(); setCamera(steps[step]);
+    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
+    if (prev < 0 || prev === step - 1) enter[step]();
+  }
+  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
+  document.getElementById('next').onclick = () => go(step + 1);
+  document.getElementById('prev').onclick = () => go(step - 1);
+  playBtn.onclick = () => setPlaying(!playing);
+  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+
+  function layout() {
+    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
+    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
+    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (step >= 0) camRadiusGoal = fitRadius(steps[step].box);
+  }
+  window.addEventListener('resize', layout);
+
+  let last = performance.now();
+  function frame(tms) {
+    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
+    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
+    stepAnims();
+    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
+    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
+    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
+    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.06, camTarget.z + Math.cos(camYaw + drift) * camRadius);
+    camera.lookAt(camTarget);
+    placeLabels();
+    renderer.render(scene, camera);
+    schedule(frame);
+  }
+  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
+  layout(); go(0, true); schedule(frame);
+})();
+</script>

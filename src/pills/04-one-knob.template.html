@@ -1,0 +1,356 @@
+<title>One Knob</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Pill 04: one weight of the trained digit network is turned by hand and the score for the misread 7 moves with it.
+     The record of that turning is a curve, and the curve is what "a function" means for the rest of the series.
+     Every number on screen is recomputed from the real weights in digits/net.json. */
+  :root {
+    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+    --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4; --bad: #fb7185;
+    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+  .lbl.on { opacity: 1; }
+  .lbl.dim { color: var(--muted); opacity: .5; }
+  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
+  .lbl.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .lbl.score { font-family: var(--mono); font-size: 13px; text-align: left; transform-origin: left center; font-variant-numeric: tabular-nums; }
+  .lbl.score b { font-family: var(--display); font-size: 15px; margin-right: 8px; }
+  .lbl.head { font-family: var(--display); font-weight: 300; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .lbl.big { font-family: var(--display); font-size: 18px; font-weight: 700; }
+  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+  #eyebrow b { font-weight: 500; color: var(--fg); }
+  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+          background: var(--bg); border-top: 1px solid var(--line); }
+  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+            display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; font-variant-numeric: tabular-nums; }
+  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
+  #ledger .ln.now { color: var(--fg); }
+  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); } #ledger .ln.now .x { color: var(--bad); }
+  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
+  #dots span.done i { width: 100%; background: var(--muted); }
+  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.big { font-size: 14px; }
+    #card { grid-template-columns: minmax(0, 1fr); }
+    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="eyebrow"><span>Knowledge pill <b>04</b> · one knob</span><span id="count">1 / 7</span></div>
+<div id="deck">
+  <div id="card">
+    <h1 id="title"></h1>
+    <p id="text"></p>
+    <div id="ledger"></div>
+  </div>
+  <div id="controls">
+    <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
+    <button id="play" type="button" aria-label="Play or pause">Pause</button>
+    <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <div id="dots" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- the trained network and the one wire we turn: from neuron 6 of the last hidden row to the output for 7 ----------
+  const NET = __NET__;
+  const WIRE = { i: 6, out: 7 }, W0 = NET.W3[WIRE.i][WIRE.out];       // 1.4176
+  const PIC = NET.samples[2];                                           // the 7 that is read as a 9
+  const x0 = PIC.pixels.map(v => v / 16);
+  const mm = (v, Wm, b) => b.map((bb, j) => { let s = bb; for (let i = 0; i < v.length; i++) s += v[i] * Wm[i][j]; return s; });
+  const h1 = mm(x0, NET.W1, NET.b1).map(Math.tanh), h2 = mm(h1, NET.W2, NET.b2).map(Math.tanh);
+  const z0 = mm(h2, NET.W3, NET.b3);
+  // the ten scores when the chosen weight is w: only that one term of the output for 7 changes
+  function scores(w) {
+    const z = z0.slice(); z[WIRE.out] += (w - W0) * h2[WIRE.i];
+    const m = Math.max(...z), e = z.map(v => Math.exp(v - m)), s = e.reduce((a, b) => a + b, 0);
+    return e.map(v => v / s);
+  }
+  const H = h2[WIRE.i];                                                  // −0.91: the number this wire carries
+  const WMIN = -6, WMAX = 6;
+  const curve = []; for (let k = 0; k <= 120; k++) { const w = WMIN + (WMAX - WMIN) * k / 120; curve.push({ w, p: scores(w)[7] }); }
+  const pct = v => (v * 100).toFixed(1) + '%', fw = w => (w >= 0 ? '' : '−') + Math.abs(w).toFixed(2);
+  // accuracy on the 1,797 test pictures for a few settings of this one weight, measured by digits/train.py's checker
+  const ACC = { now: 1724, left1: 1725, left6: 1615 };
+
+  // ---------- scene ----------
+  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090d1c);
+  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
+  const VFOV = 40;
+  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
+  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
+  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
+  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(-6, 12, 14); scene.add(key);
+  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(0, -8.8, -20); scene.add(grid);
+  const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, node: 0x3a4a86, bad: 0xfb7185, dark: 0x11182e };
+  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.45, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
+
+  // ---------- labels ----------
+  const labels = [];
+  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30, left: (base || '').includes('score') }; labels.push(L); return L; }
+  function say(L, html) { L.el.innerHTML = html; }
+  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
+  const tmp = new THREE.Vector3();
+  function placeLabels() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    for (const L of labels) {
+      if (!L.el.classList.contains('on')) continue;
+      L.obj.getWorldPosition(tmp);
+      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) / L.ref));
+      tmp.project(camera);
+      L.el.style.transform = `translate(${L.left ? '0' : '-50%'},-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
+    }
+  }
+  const anchor = (x, y, parent) => { const a = new THREE.Object3D(); a.position.set(x, y, 0); (parent || scene).add(a); return a; };
+
+  // ---------- the picture (small), the last hidden row, the ten outputs with bars ----------
+  const pic = new THREE.Group(); pic.position.set(-14.2, 0, 0); pic.scale.setScalar(0.5); scene.add(pic);
+  const tileGeo = new THREE.PlaneGeometry(0.84, 0.84), bgCol = new THREE.Color(C.dark), inCol = new THREE.Color(C.input);
+  for (let i = 0; i < 64; i++) { const t = new THREE.Mesh(tileGeo, glowMat(C.dark)); const v = PIC.pixels[i] / 16; t.material.color.copy(bgCol).lerp(inCol, v); t.material.emissive.copy(t.material.color); t.material.emissiveIntensity = 0.25 + 0.5 * v; t.position.set((i % 8 - 3.5) * 0.92, (3.5 - Math.floor(i / 8)) * 0.92, 0); pic.add(t); }
+  const picHead = label('#8e99bd', anchor(0, 4.7, pic), 'head', 30); say(picHead, 'the 7');
+  const HX = -8.4, HP = 0.9, OX = -2.4, OP = 1.2;
+  const hPos = i => new THREE.Vector3(HX, (15 / 2 - i) * HP, 0), oPos = j => new THREE.Vector3(OX, (9 / 2 - j) * OP, 0);
+  const hNodes = [], oNodes = [];
+  for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 28, 20), glowMat(C.node)); m.position.copy(hPos(i)); m.material.emissiveIntensity = 0.1 + 0.9 * Math.abs(h2[i]); scene.add(m); hNodes.push(m); }
+  for (let j = 0; j < 10; j++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.4, 28, 20), glowMat(C.output)); m.position.copy(oPos(j)); scene.add(m); oNodes.push(m); }
+  { const pts = []; for (let i = 0; i < 16; i++) for (let j = 0; j < 10; j++) pts.push(hPos(i), oPos(j)); scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: C.output, transparent: true, opacity: 0.12 }))); }
+  const heads = { h: label('#8e99bd', anchor(HX, 8.2), 'head', 30), o: label('#8e99bd', anchor(OX + 2.2, 8.2), 'head', 30) };
+  say(heads.h, '16 neurons'); say(heads.o, '10 scores');
+  // the chosen wire, its knob and its labels
+  const A = hPos(WIRE.i), B = oPos(WIRE.out), MID = A.clone().lerp(B, 0.5);
+  const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A, B]), 24, 0.06, 10, false), glowMat(C.knob)); wire.material.opacity = 0; wire.visible = false; scene.add(wire);
+  // the knob is a ring threaded on the wire: a pivot aims its axis along the wire, the ring itself turns about that axis
+  const knobPivot = new THREE.Group(); knobPivot.position.copy(MID); knobPivot.lookAt(B); scene.add(knobPivot);
+  const knob = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.12, 20, 48), glowMat(C.knob)); knob.visible = false; knob.material.opacity = 0; knobPivot.add(knob);
+  const wLabel = label('#f5b942', anchor(MID.x, MID.y + 1.1), 'tag mono', 30);
+  const hLabel = label('#c084fc', anchor(HX - 1.6, A.y), 'tag mono', 30); say(hLabel, `this neuron: ${fw(H)}`);
+  // score bars
+  const BAR_X = OX + 0.9, BAR_LEN = 3.6;
+  const bars = oNodes.map(n => { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.3), glowMat(C.output)); m.position.set(BAR_X, n.position.y, 0); m.scale.x = 0.01; scene.add(m); return m; });
+  const scoreLabels = oNodes.map((n, j) => { const L = label('#5eead4', anchor(BAR_X + BAR_LEN + 0.3, n.position.y), 'score', 30); return L; });
+
+  // ---------- the function panel: the knob left to right, the score for 7 up and down ----------
+  const PX0 = 8.0, PW = 9.0, PY0 = -4.2, PH = 8.4;
+  const panel = new THREE.Group(); scene.add(panel);
+  const px = w => PX0 + (w - WMIN) / (WMAX - WMIN) * PW, py = p => PY0 + p * PH;
+  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
+  const mkLine = (pts, mat) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); panel.add(l); return l; };
+  mkLine([new THREE.Vector3(PX0 - 0.2, PY0, 0), new THREE.Vector3(PX0 + PW + 0.4, PY0, 0)], lineMat(0x3a4670, 0.9));
+  mkLine([new THREE.Vector3(px(0), PY0 - 0.2, 0), new THREE.Vector3(px(0), PY0 + PH + 0.3, 0)], lineMat(0x3a4670, 0.9));
+  for (const p of [0.25, 0.5, 0.75, 1]) mkLine([new THREE.Vector3(PX0 - 0.2, py(p), 0), new THREE.Vector3(PX0 + PW + 0.4, py(p), 0)], lineMat(0x1e2746, 0.9));
+  const curveLine = mkLine(curve.map(c => new THREE.Vector3(px(c.w), py(c.p), 0.01)), lineMat(C.output, 1)); curveLine.geometry.setDrawRange(0, 0);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), glowMat(C.signal)); dot.material.emissiveIntensity = 1.0; dot.visible = false; panel.add(dot);
+  const marker = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 16), glowMat(C.knob)); marker.material.emissiveIntensity = 0.9; marker.visible = false; panel.add(marker);
+  const arrow = mkLine([new THREE.Vector3(0, 0, 0.02), new THREE.Vector3(0, 0, 0.02)], lineMat(C.knob, 1)); arrow.visible = false;
+  const pl = {
+    xTicks: [WMIN, -3, 0, 3, WMAX].map(w => { const L = label('#8e99bd', anchor(px(w), PY0 - 0.55), 'mono', 30); say(L, fw(w).replace('.00', '')); return L; }),
+    yTicks: [0, 0.5, 1].map(p => { const L = label('#8e99bd', anchor(PX0 - 0.9, py(p)), 'mono', 30); say(L, Math.round(p * 100) + '%'); return L; }),
+    xName: label('#f5b942', anchor(PX0 + PW / 2, PY0 - 1.4), 'tag', 30), yName: label('#5eead4', anchor(PX0 + PW / 2, PY0 + PH + 1.0), 'tag', 30),
+    fx: label('#eef1fb', anchor(PX0 + PW / 2, PY0 + PH + 2.0), 'big', 30), point: label('#c084fc', anchor(0, 0), 'tag mono', 30), way: label('#f5b942', anchor(0, 0), 'tag', 30)
+  };
+  say(pl.xName, 'the knob: this weight'); say(pl.yName, 'the score for 7'); say(pl.fx, 'y = f(x)');
+  function setPanel(a) { panel.visible = a > 0.01; for (const o of panel.children) if (o.material) o.material.opacity = a * (o === curveLine || o === arrow ? 1 : o === dot || o === marker ? 1 : o.material.color.getHex() === 0x1e2746 ? 0.9 : 0.9); }
+
+  // ---------- the live state: the weight ----------
+  let w = W0;
+  function setW(v, drawCurve) {
+    w = v; const p = scores(w), win = p.indexOf(Math.max(...p));
+    say(wLabel, `w = ${fw(w)}`);
+    knob.rotation.z = (w - W0) * 1.2;
+    oNodes.forEach((n, j) => { const bad = j === win && j !== PIC.label; n.material.color.setHex(bad ? C.bad : C.output); n.material.emissive.copy(n.material.color); n.material.emissiveIntensity = 0.15 + 1.0 * p[j]; });
+    bars.forEach((b, j) => { b.scale.x = Math.max(0.01, p[j] * BAR_LEN); b.position.x = BAR_X + b.scale.x / 2; const bad = j === win && j !== PIC.label; b.material.color.setHex(bad ? C.bad : C.output); b.material.emissive.copy(b.material.color); b.material.emissiveIntensity = j === win ? 0.6 : 0.15; });
+    scoreLabels.forEach((L, j) => { say(L, `<b>${j}</b>${pct(p[j])}${j === PIC.label ? ' ✓' : ''}`); L.el.style.setProperty('--hue', j === win && j !== PIC.label ? '#fb7185' : j === win ? '#5eead4' : '#8e99bd'); });
+    dot.position.set(px(w), py(p[7]), 0.02);
+    if (drawCurve) { const k = Math.round((w - WMIN) / (WMAX - WMIN) * 120); curveLine.geometry.setDrawRange(0, Math.max(curveLine.geometry.drawRange.count, k + 1)); }
+    return p;
+  }
+
+  // ---------- tiny tween engine ----------
+  const anims = []; let now = 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, linear = t => t;
+  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
+  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
+  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.3 * Math.sin(Math.PI * t))); }, dur, delay); }
+  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, linear); }
+  function turn(from, to, dur, delay, draw) { anim(t => setW(lerp(from, to, t), draw), dur, delay, easeInOut); }
+  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
+  function clearAnims() { anims.length = 0; }
+
+  // ---------- the steps ----------
+  const LEFT = [-16.6, 7.2, -8.4, 9.2], FULL = [-16.6, 19.6, -8.4, 9.2], RIGHT = [-4.6, 19.6, -7.6, 8.6];
+  const p0 = scores(W0), pR = scores(WMAX), pL = scores(WMIN), pm2 = scores(-2), pm4 = scores(-4), pm1 = scores(-1);
+  const steps = [
+    { dur: 13, title: 'Back to the mistake', box: LEFT, yaw: -0.08,
+      text: 'The network read this 7 as a 9. Nothing inside is broken: its 2,778 numbers were simply never nudged with this picture in mind. Look at the end of it only: the sixteen neurons of the last row, and the ten scores they feed.',
+      line: `the 7, read as 9: <span class="x">9 at ${pct(p0[9])}</span>, 7 at ${pct(p0[7])}` },
+    { dur: 14, title: 'One wire, one number', box: LEFT, yaw: -0.04,
+      text: `Pick one wire: from one of those sixteen neurons to the score for 7. On it sits one weight, ${fw(W0)}, one of the 2,778 numbers. Nothing about it is special. It is just a number, and a number can be turned.`,
+      line: `one wire · <span class="k">w = ${fw(W0)}</span>` },
+    { dur: 20, title: 'Turn it', box: LEFT, yaw: 0,
+      text: `Turn it to the right and the 7’s score falls to nothing. Turn it to the left and the score climbs: ${pct(pm2[7])} at −2, ${pct(pm4[7])} at −4, ${pct(pL[7])} at −6, where the 7 finally wins. Left, not right, because the neuron on this wire holds a negative number, ${fw(H)}, and the wire multiplies: negative times negative is positive. Every weight has a direction that helps, and it is not always the obvious one.`,
+      line: `w → 6: 7 at ${pct(pR[7])} · w → −6: <span class="o">7 at ${pct(pL[7])}, it wins</span>` },
+    { dur: 16, title: 'A curve appears', box: FULL, yaw: 0.06,
+      text: 'Do it again and keep the record. For every value of the knob there is exactly one score. Lay the knob values left to right and the scores up and down, and the record is a curve. That curve is a function: a rule that takes one number in and gives one number out. Nothing more mysterious than that.',
+      line: 'every <span class="k">w</span> → one <span class="o">score</span> : a curve, a function' },
+    { dur: 15, title: 'x in, y out', box: RIGHT, yaw: 0.1,
+      text: `The names everyone uses. The number in is x, the number out is y, and the rule is f, so y = f(x). This point is the network as it stands: x = ${fw(W0)}, y = ${pct(p0[7])}. Every x, y and f in the next pills means exactly this: one knob, one curve, one point on it.`,
+      line: `<span class="k">x = w</span> · <span class="o">y = score</span> · y = f(x) · now at (${fw(W0)}, ${pct(p0[7])})` },
+    { dur: 17, title: 'Which way, and how far', box: RIGHT, yaw: 0.1,
+      text: `From this point the curve rises to the left, so this knob should move left. But not far. At −1 the network gets ${ACC.left1.toLocaleString('en')} of the 1,797 test pictures right, one more than before. At −6 this 7 is fixed and ${(ACC.now - ACC.left6)} other pictures break: ${ACC.left6.toLocaleString('en')} right. A small move in the right direction helps everyone; a big one helps one picture and hurts the rest.`,
+      line: `a little left: w = −1 → <span class="o">${ACC.left1.toLocaleString('en')} right</span> · far left: w = −6 → <span class="x">${ACC.left6.toLocaleString('en')} right</span>` },
+    { dur: 14, title: 'The question for every knob', box: FULL, yaw: 0,
+      text: 'Which way, and how far. For one knob the curve shows it at a glance. For 2,778 knobs nobody can draw 2,778 curves and look. There has to be a way to read the direction and the size of the step straight from the numbers. Building that reader is what the next pills do, one piece at a time, starting with the shapes these curves are made of.',
+      line: 'which way, how far · for all 2,778 knobs · the next pills' }
+  ];
+
+  // deterministic resting state at the start of step i
+  function baseState(i) {
+    clearAnims();
+    const wi = i === 2 ? WMIN : W0;
+    curveLine.geometry.setDrawRange(0, i >= 3 ? 121 : 0);
+    setW(wi, false);
+    wire.visible = i >= 1; wire.material.opacity = i >= 1 ? 0.9 : 0; wire.material.emissiveIntensity = 0.5;
+    knob.visible = i >= 1; knob.material.opacity = i >= 1 ? 1 : 0; knob.material.emissiveIntensity = 0.8;
+    state(wLabel, i >= 1 ? (i === 1 || i === 2 ? 'on' : 'dim') : '');
+    state(hLabel, i === 2 ? 'on' : '');
+    hNodes.forEach((n, k) => { n.material.emissiveIntensity = i >= 1 && k === WIRE.i ? 1.0 : 0.1 + 0.9 * Math.abs(h2[k]); n.material.color.setHex(i >= 1 && k === WIRE.i ? C.signal : C.node); n.material.emissive.copy(n.material.color); });
+    scoreLabels.forEach(L => state(L, 'on'));
+    state(heads.h, i <= 2 ? 'on' : 'dim'); state(heads.o, i <= 2 ? 'on' : 'dim'); state(picHead, i === 0 ? 'on' : 'dim');
+    setPanel(i >= 3 ? 1 : 0);
+    dot.visible = i >= 3; marker.visible = i >= 4; marker.position.set(px(W0), py(p0[7]), 0.03);
+    pl.xTicks.forEach(L => state(L, i >= 3 ? 'on' : '')); pl.yTicks.forEach(L => state(L, i >= 3 ? 'on' : ''));
+    state(pl.xName, i >= 3 ? 'on' : ''); state(pl.yName, i >= 3 ? 'on' : ''); state(pl.fx, i >= 4 ? 'on' : '');
+    say(pl.xName, i >= 4 ? 'x = the knob, this weight' : 'the knob: this weight'); say(pl.yName, i >= 4 ? 'y = the score for 7' : 'the score for 7');
+    pl.point.obj.position.set(px(W0) + 0.2, py(p0[7]) + 0.9, 0); say(pl.point, `(${fw(W0)}, ${pct(p0[7])})`); state(pl.point, i >= 4 ? 'on' : '');
+    arrow.visible = i === 5; arrow.geometry.setFromPoints([new THREE.Vector3(px(W0), py(p0[7]) + 0.05, 0.02), new THREE.Vector3(px(-1), py(pm1[7]) + 0.05, 0.02)]);
+    pl.way.obj.position.set(px(-2.5), py(pm1[7]) + 1.6, 0); say(pl.way, 'this way, a little'); state(pl.way, i === 5 ? 'on' : '');
+  }
+
+  const enter = [
+    () => { oNodes.forEach((n, j) => pulse(n, 0.7, 1.0 + j * 0.08)); },
+    () => { // the wire lights, the knob appears on it
+      wire.material.opacity = 0; fade(wire, 0.9, 0.8, 0.4); knob.material.opacity = 0; knob.scale.setScalar(0.01); fade(knob, 1, 0.5, 1.2); anim(t => knob.scale.setScalar(0.01 + 0.99 * t), 0.7, 1.2);
+      state(wLabel, ''); later(() => state(wLabel, 'on'), 1.9);
+      hNodes[WIRE.i].material.emissiveIntensity = 0.1 + 0.9 * Math.abs(H); glow(hNodes[WIRE.i], 1.0, 0.6, 0.4); pulse(hNodes[WIRE.i], 0.8, 0.4); pulse(oNodes[7], 0.8, 0.9);
+    },
+    () => { // right to +6, then all the way left to −6; the neuron's own number is shown when the direction is explained
+      setW(W0, false); state(hLabel, '');
+      turn(W0, WMAX, 2.2, 0.6); turn(WMAX, W0, 1.4, 3.4); turn(W0, WMIN, 4.6, 5.4);
+      later(() => { state(hLabel, 'on'); pulse(hNodes[WIRE.i], 0.9, 0); }, 7.0);
+    },
+    () => { // the panel appears; the knob sweeps from −6 to +6 and the dot draws the curve, then settles back at the real weight
+      setW(WMIN, false); curveLine.geometry.setDrawRange(0, 0); setPanel(0); anim(t => setPanel(t), 0.9, 0.2);
+      dot.visible = false; later(() => { dot.visible = true; }, 1.0);
+      turn(WMIN, WMAX, 5.5, 1.2, true); turn(WMAX, W0, 2.2, 7.2, false);
+    },
+    () => { marker.visible = false; state(pl.point, ''); state(pl.fx, ''); later(() => { marker.visible = true; pulse(marker, 0.9, 0); state(pl.point, 'on'); }, 1.0); later(() => state(pl.fx, 'on'), 2.4); },
+    () => { // the knob moves a little to the left along the curve, and back
+      arrow.visible = false; state(pl.way, ''); later(() => { arrow.visible = true; state(pl.way, 'on'); }, 0.8);
+      turn(W0, -1, 1.6, 1.4); turn(-1, W0, 1.2, 6.5);
+    },
+    () => { oNodes.forEach((n, j) => pulse(n, 0.6, 0.6 + j * 0.06)); hNodes.forEach((n, k) => pulse(n, 0.6, 1.4 + k * 0.04)); }
+  ];
+
+  // ---------- ledger ----------
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the knob so far</div>';
+    for (let k = 0; k <= i; k++) { if (!steps[k].line) continue; const d = document.createElement('div'); d.className = 'ln' + (k === i ? ' now' : ''); d.innerHTML = steps[k].line; ledgerEl.appendChild(d); }
+  }
+
+  // ---------- camera ----------
+  function fitRadius(box) {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
+    const pad = w < 640 ? 1.45 : 1.14;
+    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    return Math.max(halfH / tanV, halfW / (tanV * aspect), 2);
+  }
+  function setCamera(s) { camRadiusGoal = fitRadius(s.box); camYawGoal = s.yaw; camGoal.set((s.box[0] + s.box[1]) / 2, (s.box[2] + s.box[3]) / 2, 0); }
+
+  // ---------- player ----------
+  let step = -1, playing = !reduced, stepStart = 0;
+  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
+  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+  function go(i, instant) {
+    const prev = step;
+    step = (i + steps.length) % steps.length; stepStart = now;
+    baseState(step);
+    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
+    countEl.textContent = (step + 1) + ' / ' + steps.length;
+    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
+    layout(); setCamera(steps[step]);
+    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
+    if (prev < 0 || prev === step - 1) enter[step]();
+  }
+  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
+  document.getElementById('next').onclick = () => go(step + 1);
+  document.getElementById('prev').onclick = () => go(step - 1);
+  playBtn.onclick = () => setPlaying(!playing);
+  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+
+  function layout() {
+    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
+    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
+    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (step >= 0) camRadiusGoal = fitRadius(steps[step].box);
+  }
+  window.addEventListener('resize', layout);
+
+  let last = performance.now();
+  function frame(tms) {
+    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
+    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
+    stepAnims();
+    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
+    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
+    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
+    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.06, camTarget.z + Math.cos(camYaw + drift) * camRadius);
+    camera.lookAt(camTarget);
+    placeLabels();
+    renderer.render(scene, camera);
+    schedule(frame);
+  }
+  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
+  layout(); go(0, true); schedule(frame);
+})();
+</script>

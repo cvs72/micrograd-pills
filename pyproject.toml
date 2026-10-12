@@ -1,0 +1,8 @@
+[project]
+name = "micrograd-pills"
+version = "0.1.0"
+description = "Numbers for the knowledge pills: a small digit reader trained with numpy, and the scripts that read it"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+]

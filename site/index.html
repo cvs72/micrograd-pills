@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge pills</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root { --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --knob: #f5b942; color-scheme: dark; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; line-height: 1.5; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-family: 'Outfit', 'Avenir Next', sans-serif; font-weight: 700; font-size: clamp(28px, 5vw, 40px); margin: 0 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 32px; }
+  h2 { font-family: 'Outfit', sans-serif; font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 32px 0 8px; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  li a { display: grid; grid-template-columns: 2.4em 1fr; gap: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg2); color: var(--fg); text-decoration: none; }
+  li a:hover { border-color: var(--muted); }
+  li a b { font-family: 'IBM Plex Mono', Menlo, monospace; font-weight: 500; color: var(--knob); }
+  li a i { font-style: normal; color: var(--muted); }
+</style>
+<main>
+  <h1>How a neural network learns</h1>
+  <p class="lead">Short animated pages, one idea each, with one real digit reader as the running example.</p>
+  <h2>Part 1 · foundations</h2>
+  <ol>
+    <li><a href="pills/01-the-map.html"><b>01</b><span>The map <i>· where neural networks sit in AI</i></span></a></li>
+    <li><a href="pills/02-a-neuron-from-outside.html"><b>02</b><span>A neuron from the outside <i>· multiply, add, squash</i></span></a></li>
+    <li><a href="pills/03-a-network-at-work.html"><b>03</b><span>A network at work <i>· a digit reader, 95.9% right</i></span></a></li>
+    <li><a href="pills/04-one-knob.html"><b>04</b><span>One knob <i>· a function</i></span></a></li>
+    <li><a href="pills/05-the-straight-line.html"><b>05</b><span>The straight line <i>· slope and lift</i></span></a></li>
+    <li><a href="pills/06-s-curve-and-hinge.html"><b>06</b><span>S-curve and hinge <i>· the squash</i></span></a></li>
+    <li><a href="pills/07-the-bowl.html"><b>07</b><span>The bowl <i>· the loss</i></span></a></li>
+    <li><a href="pills/08-the-slope.html"><b>08</b><span>The slope <i>· which way to turn</i></span></a></li>
+    <li><a href="pills/09-the-chain-rule.html"><b>09</b><span>The chain rule <i>· blame walks back</i></span></a></li>
+    <li><a href="pills/10-one-neuron-every-number.html"><b>10</b><span>One neuron, every number <i>· forward and backward</i></span></a></li>
+    <li><a href="pills/11-downhill.html"><b>11</b><span>Downhill <i>· training on screen</i></span></a></li>
+    <li><a href="pills/12-the-names.html"><b>12</b><span>The names <i>· the standard words</i></span></a></li>
+  </ol>
+</main>
+</html>

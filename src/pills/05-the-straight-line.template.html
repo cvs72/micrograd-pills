@@ -1,0 +1,426 @@
+<title>The Straight Line</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Pill 05: inside one neuron of the trained digit network, just before the squash, the total is a straight line in any one
+     input. The weight on a wire is the slope of that line, the bias is its lift, and a network of lines with no squash is
+     still one line. Every number on screen is recomputed from the real weights in digits/net.json. */
+  :root {
+    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+    --input: #4fd1ff; --knob: #f5b942; --signal: #c084fc; --output: #5eead4; --bad: #fb7185;
+    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+  .lbl.on { opacity: 1; }
+  .lbl.dim { color: var(--muted); opacity: .5; }
+  .lbl.tag { padding: 3px 8px; border-radius: 6px; background: rgba(9, 13, 28, .78); border: 1px solid var(--line); }
+  .lbl.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .lbl.left { text-align: left; transform-origin: left center; }
+  .lbl.right { text-align: right; transform-origin: right center; }
+  .lbl.head { font-family: var(--display); font-weight: 300; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .lbl.big { font-family: var(--display); font-size: 18px; font-weight: 700; }
+  .lbl i { font-style: normal; color: var(--muted); font-weight: 400; }
+  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+  #eyebrow b { font-weight: 500; color: var(--fg); }
+  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+          background: var(--bg); border-top: 1px solid var(--line); }
+  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+            display: grid; gap: 3px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; font-variant-numeric: tabular-nums; }
+  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; transition: color .4s; }
+  #ledger .ln.now { color: var(--fg); }
+  #ledger .ln.now .i { color: var(--input); } #ledger .ln.now .k { color: var(--knob); } #ledger .ln.now .s { color: var(--signal); } #ledger .ln.now .o { color: var(--output); } #ledger .ln.now .x { color: var(--bad); }
+  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
+  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+  #dots span i { position: absolute; inset: 0; width: 0; background: var(--knob); }
+  #dots span.done i { width: 100%; background: var(--muted); }
+  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    #eyebrow { font-size: 11px; } .lbl { font-size: 11px; } .lbl.big { font-size: 14px; }
+    #card { grid-template-columns: minmax(0, 1fr); }
+    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="eyebrow"><span>Knowledge pill <b>05</b> · the straight line</span><span id="count">1 / 7</span></div>
+<div id="deck">
+  <div id="card">
+    <h1 id="title"></h1>
+    <p id="text"></p>
+    <div id="ledger"></div>
+  </div>
+  <div id="controls">
+    <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
+    <button id="play" type="button" aria-label="Play or pause">Pause</button>
+    <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <div id="dots" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- the trained network, one neuron of its first row, and three of that neuron's 64 wires ----------
+  const NET = __NET__;
+  const J = 10;                                   // neuron 10 of the first row (32 neurons)
+  const PIC = NET.samples[2];                     // the 7 that is read as a 9
+  const x0 = PIC.pixels.map(v => v / 16);         // brightness 0..16 becomes the input 0..1
+  const PIX = { up: 21, down: 51, flat: 26 };     // a strong positive weight, a strong negative one, a weight near zero
+  const B0 = NET.b1[J], wOf = i => NET.W1[i][J], W0 = wOf(PIX.up);
+  const mm = (v, Wm, b) => b.map((bb, j) => { let s = bb; for (let i = 0; i < v.length; i++) s += v[i] * Wm[i][j]; return s; });
+  // the live state: the inputs, this neuron's bias, and the weight on the chosen wire
+  const xs = x0.slice(); let bias = B0, w21 = W0;
+  function zOf() { let s = bias; for (let i = 0; i < 64; i++) s += xs[i] * (i === PIX.up ? w21 : wOf(i)); return s; }
+  const Z0 = zOf();
+  const rest = i => Z0 - wOf(i) * x0[i];           // the line's lift for pixel i: everything except that one product
+  // the whole network with every squash removed: the score for 7 is then a straight line in any pixel
+  function lin7() { const h1 = mm(xs, NET.W1, NET.b1), h2 = mm(h1, NET.W2, NET.b2); return mm(h2, NET.W3, NET.b3)[7]; }
+  const f3 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(3), f2 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2);
+  const tick = v => (v >= 0 ? '' : '−') + String(Math.abs(v));
+  const hueOf = { up: '#f5b942', down: '#fb7185', flat: '#8e99bd' }, hexOf = { up: 0xf5b942, down: 0xfb7185, flat: 0x8e99bd };
+
+  // ---------- scene ----------
+  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090d1c);
+  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
+  const VFOV = 40;
+  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
+  const camTarget = new THREE.Vector3(0, 0, 0), camGoal = new THREE.Vector3(0, 0, 0);
+  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
+  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(-6, 12, 14); scene.add(key);
+  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(0, -8.8, -20); scene.add(grid);
+  const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, node: 0x3a4a86, bad: 0xfb7185, dark: 0x11182e, dim: 0x4a557a, axis: 0x3a4670, faint: 0x1e2746 };
+  function glowMat(color) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.45, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide }); }
+  const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });
+
+  // ---------- labels ----------
+  const labels = [];
+  function label(hueCss, obj, base, ref) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj, base: base || '', ref: ref || 30, left: (base || '').includes('left'), right: (base || '').includes('right') }; labels.push(L); return L; }
+  function say(L, html) { L.el.innerHTML = html; }
+  function state(L, s) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : s === 'dim' ? ' on dim' : ''); }
+  const tmp = new THREE.Vector3();
+  function placeLabels() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    for (const L of labels) {
+      if (!L.el.classList.contains('on')) continue;
+      L.obj.getWorldPosition(tmp);
+      const dist = tmp.distanceTo(camera.position), s = Math.max(0.1, Math.min(2.5, h / (2 * dist * tanV) / L.ref));
+      tmp.project(camera);
+      L.el.style.transform = `translate(${L.left ? '0' : L.right ? '-100%' : '-50%'},-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
+    }
+  }
+  const anchor = (x, y, parent) => { const a = new THREE.Object3D(); a.position.set(x, y, 0); (parent || scene).add(a); return a; };
+
+  // ---------- the picture, the first row of 32 neurons, the 64 wires into neuron 10 ----------
+  const PICX = -14.6, TP = 0.92;
+  const pic = new THREE.Group(); pic.position.set(PICX, 0, 0); scene.add(pic);
+  const tileGeo = new THREE.PlaneGeometry(0.84, 0.84), bgCol = new THREE.Color(C.dark), inCol = new THREE.Color(C.input);
+  const tiles = [];
+  const tileLocal = i => new THREE.Vector3((i % 8 - 3.5) * TP, (3.5 - Math.floor(i / 8)) * TP, 0);
+  function tint(t, v) { t.material.color.copy(bgCol).lerp(inCol, v); t.material.emissive.copy(t.material.color); t.material.emissiveIntensity = 0.25 + 0.5 * v; }
+  for (let i = 0; i < 64; i++) { const t = new THREE.Mesh(tileGeo, glowMat(C.dark)); tint(t, x0[i]); t.position.copy(tileLocal(i)); pic.add(t); tiles.push(t); }
+  const picHead = label('#8e99bd', anchor(0, 4.6, pic), 'head', 30); say(picHead, 'the 7 · 64 pixels');
+  const NX = -5.6, NP = 0.36, nPos = k => new THREE.Vector3(NX, (15.5 - k) * NP, 0);
+  const z1 = mm(x0, NET.W1, NET.b1);
+  const nodes = [];
+  for (let k = 0; k < 32; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(k === J ? 0.42 : 0.13, 28, 20), glowMat(k === J ? C.signal : C.node)); m.position.copy(nPos(k)); m.material.emissiveIntensity = k === J ? 0.6 : 0.1 + 0.7 * Math.abs(Math.tanh(z1[k])); scene.add(m); nodes.push(m); }
+  const neuron = nodes[J], NPOS = nPos(J);
+  const colHead = label('#8e99bd', anchor(NX, 6.6), 'head', 30); say(colHead, '32 neurons · first row');
+  const zLabel = label('#c084fc', anchor(NX + 2.5, NPOS.y + 0.1), 'tag mono', 30);
+  const zHead = label('#8e99bd', anchor(NX + 2.5, NPOS.y - 0.75), 'head', 30); say(zHead, 'before the squash');
+  // 64 faint wires, coloured by how much each carries: |input × weight|
+  const wireGeo = new THREE.BufferGeometry(); const wirePos = new Float32Array(64 * 6), wireCol = new Float32Array(64 * 6);
+  const tileWorld = i => tileLocal(i).add(pic.position);
+  for (let i = 0; i < 64; i++) { const a = tileWorld(i); wirePos.set([a.x, a.y, 0.1, NPOS.x, NPOS.y, 0.1], i * 6); }
+  wireGeo.setAttribute('position', new THREE.BufferAttribute(wirePos, 3)); wireGeo.setAttribute('color', new THREE.BufferAttribute(wireCol, 3));
+  const wires = new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55 })); scene.add(wires);
+  const maxCarry = Math.max(...x0.map((v, i) => Math.abs(v * wOf(i))));
+  const cTmp = new THREE.Color();
+  function paintWire(i) { const s = Math.pow(Math.min(1, Math.abs(xs[i] * (i === PIX.up ? w21 : wOf(i))) / maxCarry), 0.6); cTmp.copy(bgCol).lerp(inCol, 0.12 + 0.88 * s); wireCol.set([cTmp.r, cTmp.g, cTmp.b, cTmp.r, cTmp.g, cTmp.b], i * 6); }
+  for (let i = 0; i < 64; i++) paintWire(i); wireGeo.attributes.color.needsUpdate = true;
+  // the three chosen wires, as tubes that can light up, and their pixel labels at the left of the picture
+  const hi = {}, xLabel = {};
+  for (const k of Object.keys(PIX)) {
+    const i = PIX[k], a = tileWorld(i);
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a.clone().setZ(0.12), NPOS.clone().setZ(0.12)]), 16, 0.05, 8, false), glowMat(hexOf[k])); m.material.opacity = 0; m.visible = false; scene.add(m); hi[k] = m;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 32), glowMat(hexOf[k])); ring.position.copy(tileLocal(i)).setZ(0.11); ring.material.opacity = 0; ring.visible = false; pic.add(ring); hi[k + 'Ring'] = ring;
+    xLabel[k] = label(hueOf[k], anchor(PICX - 5.6, a.y), 'tag mono', 30);
+  }
+
+  // ---------- panels: a chart kit, used three times ----------
+  function makePanel(o) {
+    const g = new THREE.Group(); scene.add(g);
+    const px = v => o.x0 + (v - o.xmin) / (o.xmax - o.xmin) * o.w, py = v => o.y0 + (v - o.ymin) / (o.ymax - o.ymin) * o.h;
+    const mats = [], pls = [];
+    function line(pts, color, op, z) { const m = lineMat(color, op); m.userData.op = op; const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], p[1], z || 0))), m); g.add(l); mats.push(m); return l; }
+    for (const t of o.yt) if (t !== 0) line([[o.x0 - 0.2, py(t)], [o.x0 + o.w + 0.4, py(t)]], C.faint, 0.9);
+    for (const t of o.xt) if (t !== 0) line([[px(t), o.y0 - 0.2], [px(t), o.y0 + o.h + 0.3]], C.faint, 0.9);
+    line([[o.x0 - 0.2, py(0)], [o.x0 + o.w + 0.4, py(0)]], C.axis, 0.9);
+    line([[px(0), o.y0 - 0.2], [px(0), o.y0 + o.h + 0.3]], C.axis, 0.9);
+    for (const t of o.xt) { const L = label('#8e99bd', anchor(px(t), o.y0 - 0.55), 'mono', 30); say(L, tick(t)); pls.push(L); }
+    for (const t of o.yt) { const L = label('#8e99bd', anchor(o.x0 - 0.75, py(t)), 'mono', 30); say(L, tick(t)); pls.push(L); }
+    const xName = label(o.xHue, anchor(o.x0 + o.w / 2, o.y0 - 1.35), 'tag', 30); say(xName, o.xName); pls.push(xName);
+    const yName = label(o.yHue, anchor(o.x0 + o.w / 2, o.y0 + o.h + 0.95), 'tag', 30); say(yName, o.yName); pls.push(yName);
+    const P = { g, px, py, xName, yName, add: (pts, color, z, op) => line(pts, color, op || 1, z || 0.02),
+      show(a) { g.visible = a > 0.01; for (const m of mats) m.opacity = a * m.userData.op; for (const L of pls) state(L, a > 0.5 ? 'on' : ''); } };
+    P.show(0); return P;
+  }
+  const PW = 8, PH = 8, PY0 = -4;
+  const P1 = makePanel({ x0: 1.0, w: PW, y0: PY0, h: PH, xmin: 0, xmax: 1, ymin: -1, ymax: 1, xt: [0, 0.5, 1], yt: [-1, -0.5, 0, 0.5, 1], xName: 'x = one pixel, 0 to 1', yName: 'z = the total before the squash', xHue: '#4fd1ff', yHue: '#c084fc' });
+  const P2 = makePanel({ x0: 12.8, w: PW, y0: PY0, h: PH, xmin: -1, xmax: 1, ymin: -1, ymax: 1, xt: [-1, -0.5, 0, 0.5, 1], yt: [-1, -0.5, 0, 0.5, 1], xName: 'w = the weight on that wire', yName: 'z = the total before the squash', xHue: '#f5b942', yHue: '#c084fc' });
+  const P3 = makePanel({ x0: 23.4, w: PW, y0: PY0, h: PH, xmin: 0, xmax: 1, ymin: 0, ymax: 5, xt: [0, 0.5, 1], yt: [0, 1, 2, 3, 4, 5], xName: 'x = the same pixel, 0 to 1', yName: 'the score for 7, no squash anywhere', xHue: '#4fd1ff', yHue: '#5eead4' });
+  // the lines: one per chosen pixel in P1, the bias-shifted copy, the weight line in P2, the collapsed network in P3
+  const N = 40;
+  const linePts = (i, b) => Array.from({ length: N + 1 }, (_, k) => { const x = k / N; return [P1.px(x), P1.py((b === undefined ? rest(i) : b) + wOf(i) * x)]; });
+  const L1 = {}; for (const k of Object.keys(PIX)) { L1[k] = P1.add(linePts(PIX[k]), hexOf[k]); L1[k].geometry.setDrawRange(0, 0); }
+  const biasGroup = new THREE.Group(); P1.g.add(biasGroup);
+  const L1b = P1.add(linePts(PIX.up), C.knob, 0.03); L1b.visible = false; P1.g.remove(L1b); biasGroup.add(L1b);
+  const L2 = P2.add(Array.from({ length: N + 1 }, (_, k) => { const w = -1 + 2 * k / N; return [P2.px(w), P2.py(rest(PIX.up) + x0[PIX.up] * w)]; }), C.signal); L2.geometry.setDrawRange(0, 0);
+  const lin7Pts = (() => { const out = []; const keep = xs[PIX.up]; for (let k = 0; k <= N; k++) { xs[PIX.up] = k / N; out.push([P3.px(k / N), P3.py(lin7())]); } xs[PIX.up] = keep; return out; })();
+  const L3 = P3.add(lin7Pts, C.output); L3.geometry.setDrawRange(0, 0);
+  const LIN7 = { at0: lin7Pts[0], slope: (() => { const keep = xs[PIX.up]; xs[PIX.up] = 0; const a = lin7(); xs[PIX.up] = 1; const b = lin7(); xs[PIX.up] = keep; return { a, b, m: b - a }; })() };
+  // the slope triangle and its names, in P1, for the first pixel's line
+  const bUp = rest(PIX.up);
+  const tri = { run: P1.add([[P1.px(0), P1.py(bUp)], [P1.px(1), P1.py(bUp)]], C.knob, 0.03), rise: P1.add([[P1.px(1), P1.py(bUp)], [P1.px(1), P1.py(bUp + W0)]], C.knob, 0.03) };
+  tri.run.geometry.setDrawRange(0, 0); tri.rise.geometry.setDrawRange(0, 0);
+  const mk = (hue, x, y, cls, parent) => label(hue, anchor(x, y, parent), cls, 30);
+  const tl = {
+    run: mk('#f5b942', P1.px(0.5), P1.py(bUp) + 0.42, 'mono'), rise: mk('#f5b942', P1.px(1) + 0.3, P1.py(bUp + W0 / 2), 'tag mono left'),
+    b: mk('#f5b942', P1.px(0.33), P1.py(bUp) - 0.72, 'tag mono'), fx: mk('#eef1fb', P1.px(0.5), PY0 + PH + 1.95, 'big'),
+    end: {}, biasTag: mk('#f5b942', P1.px(0.8), P1.py(bUp + W0 * 0.8) - 0.65, 'tag mono', biasGroup),
+    l2: mk('#c084fc', P2.px(0.45), P2.py(rest(PIX.up) + x0[PIX.up] * 0.45) - 0.8, 'tag mono'), w: label('#f5b942', anchor((tileWorld(PIX.up).x + NPOS.x) / 2, (tileWorld(PIX.up).y + NPOS.y) / 2 + 0.9), 'tag mono'),
+    l3: mk('#5eead4', P3.px(0.5), P3.py((LIN7.slope.a + LIN7.slope.b) / 2) + 0.9, 'tag mono')
+  };
+  tl.end.up = mk(hueOf.up, P1.px(1) + 0.3, P1.py(rest(PIX.up) + W0), 'tag mono left');
+  tl.end.flat = mk(hueOf.flat, P1.px(0.03), P1.py(rest(PIX.flat)) + 0.45, 'tag mono left');
+  tl.end.down = mk(hueOf.down, P1.px(0.03), P1.py(rest(PIX.down)) + 0.5, 'tag mono left');
+  say(tl.run, '+1 in x'); say(tl.rise, `m = ${f3(W0)} <i>· the slope</i>`); say(tl.b, `b = ${f3(bUp)} <i>· the lift · the rest</i>`); say(tl.fx, 'y = m·x + b');
+  say(tl.end.up, `w = ${f3(W0)}`); say(tl.end.down, `w = ${f3(wOf(PIX.down))} <i>· downhill</i>`); say(tl.end.flat, `w = ${f3(wOf(PIX.flat))} <i>· flat</i>`);
+  say(tl.l2, `slope = x = ${f3(x0[PIX.up])} <i>· the pixel</i>`); say(tl.l3, `a line again: slope ${f2(LIN7.slope.m)}`);
+  const dots = [P1, P2, P3].map(P => { const d = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), glowMat(C.signal)); d.material.emissiveIntensity = 1; d.visible = false; P.g.add(d); return d; });
+  const mark2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 16), glowMat(C.knob)); mark2.material.emissiveIntensity = 0.9; mark2.visible = false; P2.g.add(mark2);
+  mark2.position.set(P2.px(W0), P2.py(Z0), 0.03);
+
+  // ---------- live state ----------
+  let sel = 'up';
+  function setState() {
+    const z = zOf();
+    for (const k of Object.keys(PIX)) { const i = PIX[k]; tint(tiles[i], xs[i]); paintWire(i); say(xLabel[k], `x = ${f3(xs[i])}`); }
+    wireGeo.attributes.color.needsUpdate = true;
+    say(zLabel, `z = ${f3(z)}`); say(tl.biasTag, `bias = ${f3(bias)}`); say(tl.w, `w = ${f3(w21)}`);
+    neuron.material.emissiveIntensity = 0.35 + 0.65 * Math.abs(Math.tanh(z));
+    dots[0].position.set(P1.px(xs[PIX[sel]]), P1.py(z), 0.04);
+    dots[1].position.set(P2.px(w21), P2.py(z), 0.04);
+    dots[2].position.set(P3.px(xs[PIX.up]), P3.py(lin7()), 0.04);
+    biasGroup.position.y = (bias - B0) * PH / 2;
+    return z;
+  }
+
+  // ---------- tiny tween engine ----------
+  const anims = []; let now = 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, linear = t => t;
+  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
+  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
+  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { mesh.scale.setScalar(s * (1 + 0.3 * Math.sin(Math.PI * t))); }, dur, delay); }
+  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, linear); }
+  function draw(line, k) { line.geometry.setDrawRange(0, Math.max(line.geometry.drawRange.count, k + 1)); }
+  // slide one pixel's input from a to b; while going up from 0 the line under the dot is drawn
+  function slide(i, a, b, dur, delay, line) { anim(t => { xs[i] = lerp(a, b, t); setState(); if (line) draw(line, Math.round(xs[i] * N)); }, dur, delay, easeInOut); }
+  function turnW(a, b, dur, delay, line) { anim(t => { w21 = lerp(a, b, t); setState(); if (line) draw(line, Math.round((w21 + 1) / 2 * N)); }, dur, delay, easeInOut); }
+  function turnB(a, b, dur, delay) { anim(t => { bias = lerp(a, b, t); setState(); }, dur, delay, easeInOut); }
+  function light(k, on, dur, delay) { fade(hi[k], on ? 0.95 : 0.35, dur, delay); fade(hi[k + 'Ring'], on ? 0.95 : 0.35, dur, delay); }
+  function stepAnims() { for (const a of anims) { if (a.done) continue; const t = (now - a.start) / a.dur; if (t < 0) continue; const k = Math.min(1, t); a.fn(a.ease(k)); if (k >= 1) a.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
+  function clearAnims() { anims.length = 0; }
+
+  // ---------- the steps ----------
+  const LEFT = [-21.2, -2.4, -6.6, 7.4], FULL1 = [-21.2, 14.4, -6.6, 7.4], PANEL1 = [-2.4, 14.4, -6.2, 7.2], FULL2 = [-21.2, 22.2, -6.6, 7.4], RIGHT = [9.8, 32.6, -6.6, 7.4];
+  const steps = [
+    { dur: 15, title: 'Before the squash', box: LEFT, yaw: -0.08,
+      text: `The recipe of a neuron: multiply every input by its weight, add the products, add the bias, squash. Take one neuron of the first row of the digit network as it reads the 7, and stop just before the squash. That total is called z. Here z = ${f3(Z0)}. Every one of the 64 pixels had a say in it, through its own wire.`,
+      line: `neuron 10, first row · <span class="s">z = ${f3(Z0)}</span> before the squash` },
+    { dur: 18, title: 'One pixel moves', box: FULL1, yaw: -0.02,
+      text: `Freeze everything except one pixel, a bright one near the top. The network reads brightness 0 to 16 as a number x from 0 to 1, so slide x from 0 to 1 and watch z. Lay x left to right, z up and down, keep the record, and the record is a straight line. No bend anywhere: each extra bit of x adds exactly the same amount to z.`,
+      line: `one pixel: <span class="i">x from 0 to 1</span> → <span class="s">z</span> moves on a straight line` },
+    { dur: 19, title: 'A straight line: y = m·x + b', box: PANEL1, yaw: 0.04,
+      text: `Every straight line is two numbers. m is the slope: how much y rises for one extra unit of x. Here m = ${f3(W0)}, and it is the weight on this pixel’s wire, nothing else. b is the lift: where the line sits when x is 0. Here b = ${f3(bUp)}, the other 63 pixels times their weights plus the bias, all frozen into one number. Two numbers, and the whole line is known.`,
+      line: `y = m·x + b · <span class="k">m = ${f3(W0)}</span> the weight · <span class="k">b = ${f3(bUp)}</span> the rest` },
+    { dur: 19, title: 'A weight is a slope', box: FULL1, yaw: -0.02,
+      text: `Pick another pixel and the line changes its tilt. This one, lower down, carries weight ${f3(wOf(PIX.down))}: its line runs downhill, more brightness there pulls z down. This one carries ${f3(wOf(PIX.flat))}: nearly flat, the neuron barely listens to it. That is what a weight is. Large means the pixel matters, negative means it pushes the other way, near zero means ignored. This neuron holds 64 slopes, one per pixel.`,
+      line: `<span class="x">w = ${f3(wOf(PIX.down))}</span> downhill · w = ${f3(wOf(PIX.flat))} flat · 64 slopes in one neuron` },
+    { dur: 16, title: 'The bias is the lift', box: FULL1, yaw: 0,
+      text: `The bias is added to the total whatever the pixels say. Turn it and the whole line moves up or down without tilting. It sets how much input the neuron needs before z turns positive: a low bias makes a reluctant neuron, a high one an eager one. Here it is ${f3(B0)}, a small nudge, but it is the 65th number this neuron owns, and training moves it like any weight.`,
+      line: `bias = ${f3(B0)} · lifts the line, no tilt` },
+    { dur: 17, title: 'Turn the weight instead', box: FULL2, yaw: 0.05,
+      text: `The previous pill turned a weight, so turn this one. Freeze the pixel at its real value, ${f3(x0[PIX.up])}, and turn the weight from −1 to 1. z moves on a straight line again, and now the slope is ${f3(x0[PIX.up])}: the pixel. Weight times pixel is the same as pixel times weight, so each is the slope of the other. Keep this: the slope of z against a weight is the input on that wire. It comes back twice later in the series.`,
+      line: `<span class="k">w from −1 to 1</span> → <span class="s">z</span> on a line · slope = <span class="i">x = ${f3(x0[PIX.up])}</span>` },
+    { dur: 18, title: 'Why a line is not enough', box: RIGHT, yaw: 0.1,
+      text: `Lines are simple, and that is the problem. A line goes up forever or down forever; it cannot say ‘this pixel helps up to a point, then hurts’. And a line fed into a line is still a line. Take the squash out of every neuron and the whole network, three rows and 2,778 numbers, collapses into one straight line per score: here, the score for 7 against the same pixel. 650 numbers would do that job. The squash is what prevents the collapse, and its shapes are next.`,
+      line: `no squash: <span class="o">every score a straight line</span> · 2,778 numbers do the work of 650` }
+  ];
+
+  // deterministic resting state at the start of step i
+  function baseState(i) {
+    clearAnims();
+    for (let k = 0; k < 64; k++) xs[k] = x0[k]; bias = B0; w21 = W0; sel = i === 3 ? 'flat' : 'up';
+    setState();
+    wires.material.opacity = 0.55;
+    for (const k of Object.keys(PIX)) {
+      const on = k === 'up' ? i >= 1 : i >= 3, now = k === 'up' ? (i === 1 || i === 2 || i === 4 || i === 5) : i === 3;
+      hi[k].visible = on; hi[k].material.opacity = on ? (now ? 0.95 : 0.35) : 0; hi[k].material.emissiveIntensity = 0.6;
+      hi[k + 'Ring'].visible = on; hi[k + 'Ring'].material.opacity = on ? (now ? 0.95 : 0.35) : 0; hi[k + 'Ring'].material.emissiveIntensity = 0.6;
+      state(xLabel[k], on ? (now ? 'on' : 'dim') : '');
+      L1[k].geometry.setDrawRange(0, (k === 'up' ? i >= 2 : i >= 4) ? N + 1 : 0);
+      L1[k].material.color.setHex(k === 'up' ? (i <= 2 ? hexOf.up : C.dim) : (i === 3 ? hexOf[k] : C.dim));
+      state(tl.end[k], (k === 'up' ? i >= 2 : i >= 4) ? (i === 3 || (k === 'up' && i === 2) ? 'on' : 'dim') : '');
+    }
+    state(zLabel, 'on'); state(zHead, i === 0 ? 'on' : 'dim'); state(picHead, i === 0 ? 'on' : 'dim'); state(colHead, i === 0 ? 'on' : 'dim');
+    P1.show(i >= 1 ? 1 : 0); P2.show(i >= 5 ? 1 : 0); P3.show(i >= 6 ? 1 : 0);
+    dots[0].visible = i >= 2 && i !== 5; dots[1].visible = i >= 5; dots[2].visible = i >= 6; mark2.visible = i >= 5;
+    tri.run.geometry.setDrawRange(0, i >= 3 ? 2 : 0); tri.rise.geometry.setDrawRange(0, i >= 3 ? 2 : 0);
+    tri.run.material.color.setHex(i === 2 ? C.knob : C.dim); tri.rise.material.color.setHex(i === 2 ? C.knob : C.dim);
+    for (const k of ['run', 'rise', 'b']) state(tl[k], i >= 3 ? 'dim' : '');
+    state(tl.fx, i >= 3 ? 'on' : '');
+    L1b.visible = false; state(tl.biasTag, '');
+    L2.geometry.setDrawRange(0, i >= 6 ? N + 1 : 0); L2.material.color.setHex(i === 5 ? C.signal : C.dim); state(tl.l2, i >= 6 ? 'dim' : ''); state(tl.w, '');
+    L3.geometry.setDrawRange(0, 0); state(tl.l3, '');
+    for (const P of [P1, P2]) { const dimP = (P === P1 && i >= 5) || (P === P2 && i >= 6); if (P.g.visible) { state(P.xName, dimP ? 'dim' : 'on'); state(P.yName, dimP ? 'dim' : 'on'); } }
+  }
+
+  const enter = [
+    () => { // the wires fan in, the neuron lights
+      wires.material.opacity = 0; anim(t => { wires.material.opacity = 0.55 * t; }, 1.6, 0.6);
+      pulse(neuron, 0.9, 1.8); glow(neuron, 1.0, 0.5, 1.8); glow(neuron, 0.35 + 0.65 * Math.abs(Math.tanh(Z0)), 0.8, 2.6);
+      state(zLabel, ''); later(() => state(zLabel, 'on'), 2.2);
+    },
+    () => { // the pixel lights, the panel opens, the pixel slides 0 → 1 drawing its line, then back to its real value
+      hi.up.material.opacity = 0; hi.upRing.material.opacity = 0; light('up', true, 0.7, 0.3); state(xLabel.up, ''); later(() => state(xLabel.up, 'on'), 1.0);
+      P1.show(0); anim(t => P1.show(t), 0.9, 1.2);
+      L1.up.geometry.setDrawRange(0, 0); dots[0].visible = false; later(() => { dots[0].visible = true; }, 2.2);
+      slide(PIX.up, x0[PIX.up], 0, 1.0, 2.2); slide(PIX.up, 0, 1, 6.0, 3.4, L1.up); slide(PIX.up, 1, x0[PIX.up], 1.6, 9.8);
+      later(() => state(tl.end.up, 'on'), 9.6);
+    },
+    () => { // the slope triangle and the two names
+      for (const k of ['run', 'rise']) { tri[k].material.color.setHex(C.knob); tri[k].geometry.setDrawRange(0, 0); }
+      later(() => tri.run.geometry.setDrawRange(0, 2), 0.8); later(() => tri.rise.geometry.setDrawRange(0, 2), 2.2);
+      later(() => state(tl.run, 'on'), 1.2); later(() => state(tl.rise, 'on'), 2.8); later(() => state(tl.b, 'on'), 5.0); later(() => state(tl.fx, 'on'), 7.0);
+    },
+    () => { // the downhill pixel, then the flat one; each slides 0 → 1 drawing its line
+      for (const k of ['down', 'flat']) { hi[k].material.opacity = 0; hi[k + 'Ring'].material.opacity = 0; L1[k].geometry.setDrawRange(0, 0); state(xLabel[k], ''); state(tl.end[k], ''); }
+      sel = 'down'; light('down', true, 0.6, 0.4); later(() => state(xLabel.down, 'on'), 0.8);
+      slide(PIX.down, x0[PIX.down], 0, 0.8, 1.0); slide(PIX.down, 0, 1, 3.6, 1.9, L1.down); later(() => state(tl.end.down, 'on'), 5.4); slide(PIX.down, 1, x0[PIX.down], 1.0, 5.6);
+      later(() => { sel = 'flat'; light('down', false, 0.6, 0); light('flat', true, 0.6, 0); setState(); }, 6.9); later(() => state(xLabel.flat, 'on'), 7.4);
+      slide(PIX.flat, x0[PIX.flat], 0, 0.8, 7.6); slide(PIX.flat, 0, 1, 3.6, 8.5, L1.flat); later(() => state(tl.end.flat, 'on'), 12.0); slide(PIX.flat, 1, x0[PIX.flat], 1.0, 12.2);
+    },
+    () => { // a gold copy of the first line rides up and down with the bias
+      L1b.visible = true; L1b.material.opacity = 0; fade(L1b, 1, 0.6, 0.5); later(() => state(tl.biasTag, 'on'), 0.9);
+      turnB(B0, 0.4, 2.4, 1.4); turnB(0.4, -0.5, 3.4, 4.6); turnB(-0.5, B0, 2.0, 8.8);
+    },
+    () => { // the second panel opens; the weight turns from −1 to 1 and back, drawing a line whose slope is the pixel
+      P2.show(0); anim(t => P2.show(t), 0.9, 0.4); L2.geometry.setDrawRange(0, 0); dots[1].visible = false; mark2.visible = false;
+      state(tl.w, ''); later(() => state(tl.w, 'on'), 1.2); glow(hi.up, 1.4, 0.5, 0.8); pulse(hi.upRing, 0.9, 0.8);
+      later(() => { dots[1].visible = true; }, 1.8);
+      turnW(W0, -1, 1.2, 1.8); turnW(-1, 1, 5.2, 3.2, L2); later(() => state(tl.l2, 'on'), 8.2); turnW(1, W0, 1.6, 8.6);
+      later(() => { mark2.visible = true; pulse(mark2, 0.8, 0); }, 10.2);
+    },
+    () => { // the third panel: the whole network with no squash, the score for 7 against the same pixel
+      P3.show(0); anim(t => P3.show(t), 0.9, 0.4); dots[2].visible = false; later(() => { dots[2].visible = true; }, 1.6);
+      slide(PIX.up, x0[PIX.up], 0, 1.0, 1.6); slide(PIX.up, 0, 1, 5.0, 2.8, L3); later(() => state(tl.l3, 'on'), 7.6); slide(PIX.up, 1, x0[PIX.up], 1.4, 8.2);
+    }
+  ];
+
+  // ---------- ledger ----------
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the line so far</div>';
+    for (let k = 0; k <= i; k++) { if (!steps[k].line) continue; const d = document.createElement('div'); d.className = 'ln' + (k === i ? ' now' : ''); d.innerHTML = steps[k].line; ledgerEl.appendChild(d); }
+  }
+
+  // ---------- camera ----------
+  function fitRadius(box) {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
+    const pad = w < 640 ? 1.45 : 1.14;
+    const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    return Math.max(halfH / tanV, halfW / (tanV * aspect), 2);
+  }
+  function setCamera(s) { camRadiusGoal = fitRadius(s.box); camYawGoal = s.yaw; camGoal.set((s.box[0] + s.box[1]) / 2, (s.box[2] + s.box[3]) / 2, 0); }
+
+  // ---------- player ----------
+  let step = -1, playing = !reduced, stepStart = 0;
+  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
+  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+  function go(i, instant) {
+    const prev = step;
+    step = (i + steps.length) % steps.length; stepStart = now;
+    baseState(step);
+    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
+    countEl.textContent = (step + 1) + ' / ' + steps.length;
+    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
+    layout(); setCamera(steps[step]);
+    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
+    if (prev < 0 || prev === step - 1) enter[step]();
+  }
+  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
+  document.getElementById('next').onclick = () => go(step + 1);
+  document.getElementById('prev').onclick = () => go(step - 1);
+  playBtn.onclick = () => setPlaying(!playing);
+  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+
+  function layout() {
+    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
+    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
+    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (step >= 0) camRadiusGoal = fitRadius(steps[step].box);
+  }
+  window.addEventListener('resize', layout);
+
+  let last = performance.now();
+  function frame(tms) {
+    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
+    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
+    stepAnims();
+    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
+    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
+    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
+    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.06, camTarget.z + Math.cos(camYaw + drift) * camRadius);
+    camera.lookAt(camTarget);
+    placeLabels();
+    renderer.render(scene, camera);
+    schedule(frame);
+  }
+  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
+  layout(); go(0, true); schedule(frame);
+})();
+</script>

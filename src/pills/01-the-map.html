@@ -1,0 +1,431 @@
+<title>The AI Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Left: a bracketed vertical list of cards, one colour per level, with the item we zoom out to on its left.
+     Right: the onion. Each step the list we were in fuses: its cards slide together, their text fades, the blob morphs into a filled disc
+     and glides onto the onion, where every disc shares the same bottom edge so each layer keeps a crescent at the top for its title.
+     Stage above, caption deck pinned below. Single dark look. Landscape first; portrait later. */
+  :root {
+    --bg: #090d1c; --bg2: #11182e; --fg: #eef1fb; --muted: #8e99bd; --line: #273153; --ink: #0b1020;
+    --display: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+    --body: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); overflow: hidden; }
+  #stage { position: fixed; left: 0; right: 0; top: 0; height: 60%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #labels { position: fixed; left: 0; right: 0; top: 0; height: 60%; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-family: var(--body); font-size: 13px; font-weight: 600; line-height: 1.15; text-align: center; white-space: nowrap;
+         transform-origin: center; opacity: 0; transition: opacity .5s, color .5s; color: var(--hue); }
+  .lbl small { display: none; font-size: 10px; font-weight: 400; opacity: .8; margin-top: 1px; }
+  .lbl.sub small { display: block; }
+  .lbl.on { opacity: 1; }
+  .lbl.pick { color: var(--ink); font-weight: 700; }          /* chosen items and onion titles sit on solid colour, so dark text */
+  .lbl.pick small { color: var(--ink); opacity: .75; }
+  .lbl.cap { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .01em; }
+  #eyebrow { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+             font-family: var(--display); font-weight: 300; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); z-index: 2; }
+  #eyebrow b { font-weight: 500; color: var(--fg); }
+  #deck { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px;
+          background: var(--bg); border-top: 1px solid var(--line); }
+  #card { max-width: 860px; margin: 0 auto; width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+  #title { font-family: var(--display); font-weight: 700; font-size: clamp(20px, 3vw, 30px); line-height: 1.1; text-wrap: balance; margin: 0; grid-column: 1; }
+  #text { font-size: clamp(14px, 1.5vw, 17px); line-height: 1.45; color: var(--fg); margin: 0; max-width: 62ch; grid-column: 1; }
+  #ledger { grid-column: 2; grid-row: 1 / span 2; font-family: var(--mono); font-size: clamp(12px, 1.2vw, 14px); line-height: 1.5;
+            display: grid; gap: 5px; align-content: start; min-width: 0; padding-left: 14px; border-left: 1px solid var(--line); min-height: 4em; }
+  #ledger .ln { color: var(--muted); overflow-wrap: anywhere; }
+  #ledger .ln.now { color: var(--fg); }
+  #ledger .ln .seg { font-weight: 600; }
+  #ledger .ln.title { font-family: var(--display); font-weight: 300; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+  #controls { max-width: 860px; margin: 0 auto; width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  button { font-family: var(--display); font-weight: 500; font-size: 14px; letter-spacing: .04em; color: var(--fg); background: var(--bg2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
+  #dots { display: flex; gap: 6px; flex: 1; min-width: 120px; }
+  #dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; overflow: hidden; }
+  #dots span i { position: absolute; inset: 0; width: 0; background: #facc15; }
+  #dots span.done i { width: 100%; background: var(--muted); }
+  #count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    #eyebrow { font-size: 11px; }
+    .lbl { font-size: 11px; } .lbl.cap { font-size: 13px; }
+    #card { grid-template-columns: minmax(0, 1fr); }
+    #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="eyebrow"><span>Knowledge pill <b>01</b> · the map</span><span id="count">1 / 7</span></div>
+<div id="deck">
+  <div id="card">
+    <h1 id="title"></h1>
+    <p id="text"></p>
+    <div id="ledger"></div>
+  </div>
+  <div id="controls">
+    <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
+    <button id="play" type="button" aria-label="Play or pause">Pause</button>
+    <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <div id="dots" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
+(function () {
+  'use strict';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- the lists ----------
+  // Level 0 is the root (AI). Each level lists what sits inside the previous level's chosen item (marked p), chosen item in the middle.
+  // Level 6 is the chatbots everybody uses. We start there and zoom out one level per step. One colour per level; a fused list keeps its colour on the onion.
+  const HUES = [0xa78bfa, 0x60a5fa, 0x22d3ee, 0x34d399, 0xfacc15, 0xfb923c, 0xf472b6];
+  const HUE_CSS = ['#a78bfa', '#60a5fa', '#22d3ee', '#34d399', '#facc15', '#fb923c', '#f472b6'];
+  const LEVELS = [
+    { w: 6, items: [{ t: 'Artificial intelligence', sub: 'the 1956 name', p: true }] },
+    { w: 6, items: [
+      { t: 'Expert systems' }, { t: 'Search & planning' }, { t: 'Probabilistic reasoning' },
+      { t: 'Machine learning', sub: 'learns from examples', p: true },
+      { t: 'Evolutionary algorithms' }, { t: 'Fuzzy logic' }, { t: 'Knowledge & logic' }] },
+    { w: 6, items: [
+      { t: 'Regression' }, { t: 'Trees & forests' }, { t: 'Boosting (XGBoost)' }, { t: 'Support vector machines' },
+      { t: 'Neural networks', sub: 'rows of small functions', p: true },
+      { t: 'Nearest neighbours' }, { t: 'Naive Bayes' }, { t: 'Clustering (k-means)' }, { t: 'Reinforcement learning' }] },
+    { w: 6, items: [
+      { t: 'Perceptron', sub: '1958 · one layer' }, { t: 'Deep learning', sub: 'many layers', p: true }, { t: 'Shallow networks', sub: 'a few layers · 1990s' }] },
+    { w: 6, items: [
+      { t: 'Computer vision', sub: 'face unlock, scans' }, { t: 'Speech recognition', sub: 'dictation, subtitles' }, { t: 'Recommendation', sub: 'feeds, ads' },
+      { t: 'Generative AI', sub: 'produces new content', p: true },
+      { t: 'Translation' }, { t: 'Game playing', sub: 'AlphaGo' }, { t: 'Protein folding', sub: 'AlphaFold' }] },
+    { w: 6, items: [
+      { t: 'Image', sub: 'Midjourney, Stable Diffusion' }, { t: 'Video', sub: 'Sora, Veo' }, { t: 'Language models', sub: 'LLMs', p: true }, { t: 'Voice', sub: 'ElevenLabs' }, { t: 'Music', sub: 'Suno, Udio' }] },
+    { w: 3.4, items: ['ChatGPT', 'Claude', 'Gemini', 'Llama', 'Grok', 'Kimi', 'DeepSeek', 'Mistral'].map(t => ({ t })) }
+  ];
+  const DY = 1.3, TILE_H = 0.98, PARENT_X = -8.2;
+  // the onion: layer k is level 6−k fused. Filled discs, all standing on the same bottom edge, each 1.35 wider than the one inside it.
+  const LAYER_TITLE = ['LLMs', 'Generative AI', 'Deep learning', 'Neural networks', 'Machine learning', 'Artificial intelligence'];
+  const R0 = 1.7, RW = 1.35, layerR = k => R0 + RW * k;
+  const ONION = { x: 14.5, y: -8.2, xFinal: 5.9 };
+
+  // ---------- scene ----------
+  const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090d1c);
+  scene.fog = new THREE.Fog(0x090d1c, 70, 150);
+  const VFOV = 40;
+  const camera = new THREE.PerspectiveCamera(VFOV, 1, 0.1, 300);
+  const camTarget = new THREE.Vector3(6, 0, 0), camGoal = new THREE.Vector3(6, 0, 0);
+  let camRadius = 30, camRadiusGoal = 30, camYaw = 0, camYawGoal = 0;
+
+  scene.add(new THREE.AmbientLight(0x9aa6cc, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.65); key.position.set(-6, 12, 14); scene.add(key);
+  const grid = new THREE.GridHelper(220, 110, 0x1c2544, 0x151d38); grid.position.set(20, ONION.y - 0.4, -20); scene.add(grid);
+  {
+    const n = 700, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { pos[i * 3] = -30 + Math.random() * 120; pos[i * 3 + 1] = -10 + Math.random() * 30; pos[i * 3 + 2] = -20 - Math.random() * 60; }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x3b4a7a, size: 0.14, transparent: true, opacity: 0.8 })));
+  }
+
+  function roundedRectShape(w, h, r) {
+    const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+    return s;
+  }
+  function mat(color, opaque) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: 0.5, metalness: 0.05, transparent: !opaque, opacity: opaque ? 1 : 0, side: THREE.DoubleSide }); }
+
+  // ---------- HTML labels anchored to 3D objects, scaled with the object's size on screen ----------
+  const labels = [];
+  function label(hueCss, anchorObj, base) { const el = document.createElement('div'); el.className = 'lbl ' + (base || ''); el.style.setProperty('--hue', hueCss); labelsEl.appendChild(el); const L = { el, obj: anchorObj, base: base || '' }; labels.push(L); return L; }
+  function say(L, html) { L.el.innerHTML = html; }
+  // s: '' hidden · 'on' lit; pick: dark text on solid colour; sub: show the small second line
+  function state(L, s, pick, sub) { L.el.className = 'lbl ' + L.base + (s === 'on' ? ' on' : '') + (pick ? ' pick' : '') + (sub ? ' sub' : ''); }
+  const tmp = new THREE.Vector3(), sc = new THREE.Vector3();
+  function placeLabels() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    const tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    for (const L of labels) {
+      L.obj.getWorldPosition(tmp); L.obj.getWorldScale(sc);
+      const dist = tmp.distanceTo(camera.position), pxPerUnit = h / (2 * dist * tanV), s = Math.max(0.1, Math.min(2.5, pxPerUnit / 30 * sc.y));
+      tmp.project(camera);
+      L.el.style.transform = `translate(-50%,-50%) translate(${(tmp.x * .5 + .5) * w}px,${(tmp.y * -.5 + .5) * h}px) scale(${s.toFixed(3)})`;
+    }
+  }
+
+  // ---------- build levels: a group per level with tiles, a bracket on its left edge, and a link line to its parent item ----------
+  const levels = [];
+  LEVELS.forEach((lv, c) => {
+    const g = new THREE.Group(); scene.add(g);
+    const n = lv.items.length, tileGeo = new THREE.ShapeGeometry(roundedRectShape(lv.w, TILE_H, 0.22), 6);
+    const items = lv.items.map((d, i) => {
+      const y0 = -(i - (n - 1) / 2) * DY;
+      const m = new THREE.Mesh(tileGeo, mat(HUES[c])); m.position.set(0, y0, 0); m.visible = false; g.add(m);
+      const L = label(HUE_CSS[c], m); say(L, d.t + (d.sub ? `<small>${d.sub}</small>` : ''));
+      return { mesh: m, lbl: L, p: !!d.p, i, y0 };
+    });
+    let bracket = null, link = null;
+    if (c > 0) {
+      const x = -lv.w / 2 - 0.55, top = DY * (n - 1) / 2 + TILE_H / 2 + 0.15, bot = -top;
+      const pts = [new THREE.Vector3(x + 0.3, top, 0), new THREE.Vector3(x, top - 0.3, 0), new THREE.Vector3(x, 0.45, 0), new THREE.Vector3(x - 0.3, 0, 0), new THREE.Vector3(x, -0.45, 0), new THREE.Vector3(x, bot + 0.3, 0), new THREE.Vector3(x + 0.3, bot, 0)];
+      bracket = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.05, 8, false), mat(HUES[c])); bracket.visible = false; g.add(bracket);
+      link = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: HUES[c], transparent: true, opacity: 0 })); link.visible = false; scene.add(link);
+    }
+    levels.push({ c, g, items, pick: items.find(it => it.p) || null, bracket, link, tipX: -lv.w / 2 - 0.85, w: lv.w });
+  });
+  const picked = c => levels[c].pick;
+
+  // ---------- the onion: one morphing disc per fused level ----------
+  const onion = new THREE.Group(); onion.position.set(ONION.x, ONION.y, 0); scene.add(onion);
+  const N = 96;
+  function outlineRect(w, h) { const pts = roundedRectShape(w, h, 0.22).getSpacedPoints(N); pts.length = N; return pts; }
+  function outlineCircle(r, a0) { const pts = []; for (let j = 0; j < N; j++) { const a = a0 + 2 * Math.PI * j / N; pts.push(new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))); } return pts; }
+  const layers = LAYER_TITLE.map((title, k) => {
+    const c = 6 - k, r = layerR(k);
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array((N + 1) * 3), nrm = new Float32Array((N + 1) * 3), idx = [];
+    for (let j = 0; j <= N; j++) nrm[j * 3 + 2] = 1;
+    for (let j = 0; j < N; j++) idx.push(0, j + 1, ((j + 1) % N) + 1);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); geo.setIndex(idx);
+    const mesh = new THREE.Mesh(geo, mat(HUES[c], true)); mesh.material.emissiveIntensity = 0.22; mesh.visible = false; onion.add(mesh);
+    const rect = outlineRect(levels[c].w, TILE_H), circ = outlineCircle(r, Math.atan2(rect[0].y, rect[0].x));
+    const anchor = new THREE.Object3D(); anchor.position.set(0, k === 0 ? r : 2 * r - RW / 2 - 0.02, -0.06 * k + 0.02); onion.add(anchor);
+    const lbl = label(HUE_CSS[c], anchor, 'cap'); say(lbl, title);
+    return { k, c, r, mesh, rect, circ, lbl, home: new THREE.Vector3(0, r, -0.06 * k) };
+  });
+  // t = 0: the fused list's rounded card · t = 1: the layer's disc
+  function setMorph(L, t) {
+    const a = L.mesh.geometry.attributes.position.array;
+    for (let j = 0; j < N; j++) { a[(j + 1) * 3] = L.rect[j].x + (L.circ[j].x - L.rect[j].x) * t; a[(j + 1) * 3 + 1] = L.rect[j].y + (L.circ[j].y - L.rect[j].y) * t; }
+    L.mesh.geometry.attributes.position.needsUpdate = true;
+  }
+  // the pointer: from the newest disc back to the card it belongs to in the list on the left
+  const pointer = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xc9d2ee, transparent: true, opacity: 0 }));
+  pointer.visible = false; scene.add(pointer);
+  let curFc = 6;
+
+  // the links run between moving objects, so refresh them every frame
+  const a = new THREE.Vector3(), b = new THREE.Vector3();
+  function setLine(line, p, q) { const arr = line.geometry.attributes.position.array; arr[0] = p.x; arr[1] = p.y; arr[2] = p.z; arr[3] = q.x; arr[4] = q.y; arr[5] = q.z; line.geometry.attributes.position.needsUpdate = true; }
+  function updateLinks() {
+    for (let c = 1; c < levels.length; c++) {
+      const lv = levels[c]; if (!lv.link.visible) continue;
+      picked(c - 1).mesh.getWorldPosition(a); a.x += levels[c - 1].w / 2;
+      lv.g.getWorldPosition(b); b.x += lv.tipX;
+      setLine(lv.link, a, b);
+    }
+    if (pointer.visible && curFc >= 0 && curFc <= 5) {
+      const L = layers[5 - curFc];
+      picked(curFc).mesh.getWorldPosition(a); a.x += levels[curFc].w / 2;
+      onion.getWorldPosition(b); b.x += -L.r + 0.05; b.y += L.r; b.z += L.home.z + 0.03;
+      setLine(pointer, a, b);
+    }
+  }
+
+  // ---------- tiny tween engine ----------
+  const anims = []; let now = 0;
+  const easeOut = t => 1 - Math.pow(1 - t, 3), easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function anim(fn, dur, delay, ease) { anims.push({ fn, start: now + (reduced ? 0 : (delay || 0)), dur: reduced ? 0.01 : dur, ease: ease || easeOut, done: false }); }
+  const lerp = (x, y, t) => x + (y - x) * t;
+  function fade(mesh, to, dur, delay) { const from = mesh.material.opacity; anim(t => { mesh.material.opacity = lerp(from, to, t); mesh.visible = mesh.material.opacity > 0.01; }, dur, delay); }
+  function glow(mesh, to, dur, delay) { const from = mesh.material.emissiveIntensity; anim(t => { mesh.material.emissiveIntensity = lerp(from, to, t); }, dur, delay); }
+  function grow(mesh, dur, delay) { mesh.scale.setScalar(0.01); anim(t => { mesh.scale.setScalar(0.01 + 0.99 * t); }, dur, delay, t => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2)); }
+  function move(obj, to, dur, delay) { const from = obj.position.clone(); anim(t => { obj.position.set(lerp(from.x, to.x, t), lerp(from.y, to.y, t), lerp(from.z, to.z, t)); }, dur, delay, easeInOut); }
+  function lineFade(line, to, dur, delay) { const from = line.material.opacity; anim(t => { line.material.opacity = lerp(from, to, t); line.visible = line.material.opacity > 0.01; }, dur, delay); }
+  function later(fn, s) { anim(t => { if (t >= 1) fn(); }, 0.01, s, t => t); }
+  function stepAnims() { for (const an of anims) { if (an.done) continue; const t = (now - an.start) / an.dur; if (t < 0) continue; const k = Math.min(1, t); an.fn(an.ease(k)); if (k >= 1) an.done = true; } for (let i = anims.length - 1; i >= 0; i--) if (anims[i].done) anims.splice(i, 1); }
+  function clearAnims() { anims.length = 0; }
+
+  // ---------- the steps ----------
+  // Steps 0–5: the list we are in is level 6 − i, its parent item on the left. Each step from 1 on first fuses the previous list onto the onion. Step 6: the whole onion.
+  const steps = [
+    { dur: 14, title: 'Start where everybody starts',
+      text: 'ChatGPT, Claude, Gemini, Llama, Grok, Kimi, DeepSeek, Mistral. Different companies, different names, one kind of machine: a large language model, a program that reads text and predicts which text should come next. GPT is only OpenAI’s name for its family. The recipe is shared by all of them.',
+      also: 'all of them: transformer-based language models' },
+    { dur: 14, title: 'Zoom out: generative AI',
+      text: 'Language models are one branch of generative AI: models that produce new content rather than only sorting or labelling what already exists. Their siblings produce images, video, voice and music. Same way of training, different kind of output.',
+      also: 'also generative: image · video · voice · music' },
+    { dur: 16, title: 'Zoom out: deep learning',
+      text: 'Generative AI is deep learning: networks with many layers, trained on very large data. Most of deep learning does not generate anything. It recognises faces, transcribes speech, ranks the next video in a feed, translates, plays Go, predicts protein shapes. Generating is the newest branch, not the biggest.',
+      also: 'also deep learning: vision · speech · recommendation · translation · game playing · protein folding' },
+    { dur: 15, title: 'Zoom out: neural networks',
+      text: 'Deep learning is a neural network with many layers. The network idea is older than the depth: the 1958 perceptron is one layer, and the networks of the 1990s had a few layers and read postcodes and cheques. “Deep” only means many layers stacked. It became practical around 2012, when data and graphics cards caught up.',
+      also: 'also networks: perceptron (1958, one layer) · shallow networks (a few layers)' },
+    { dur: 17, title: 'Zoom out: machine learning',
+      text: 'A neural network is one family inside machine learning: programs that adjust their own numbers from examples instead of following rules a person wrote. The other families do the same with different machinery: trees and forests, boosting such as XGBoost, regression, support vector machines, nearest neighbours, clustering. Several of them still beat networks on table-shaped data.',
+      also: 'also machine learning: regression · trees & forests · boosting · SVM · nearest neighbours · naive Bayes · clustering · reinforcement learning' },
+    { dur: 17, title: 'Zoom out: artificial intelligence',
+      text: 'Machine learning is one branch of AI, the 1956 name for any program doing a task that seemed to need a mind. The other branches do not learn from data. Rules written by experts, search and planning like the chess computer that beat Kasparov in 1997, reasoning with probabilities, evolutionary algorithms, fuzzy logic inside washing machines and cameras. All of them earned money long before 2010.',
+      also: 'also AI: expert systems · search & planning · probabilistic reasoning · evolutionary algorithms · fuzzy logic · knowledge & logic' },
+    { dur: 14, title: 'Where today’s AI sits',
+      text: 'Six layers, each inside the next. The AI everybody uses today is the innermost one: AI, machine learning, neural networks, deep learning, generative AI, and the language models at the centre. Every other branch is still there and still working. This series goes down to that centre, to the smallest piece that makes it learn.',
+      also: 'six layers, one inside the next' }
+  ];
+  const focusOf = i => i <= 5 ? 6 - i : -1;
+
+  // deterministic resting state at the start of step i, so Back and Next can jump anywhere
+  function baseState(i) {
+    clearAnims();
+    const set = (mesh, on, op, em) => { mesh.visible = on; mesh.material.opacity = on ? op : 0; mesh.material.emissiveIntensity = on ? em : 0; mesh.scale.setScalar(1); };
+    const fc = focusOf(i); curFc = fc;
+    levels.forEach((lv, c) => {
+      const role = c === fc ? 'focus' : c === fc - 1 ? 'parent' : 'hidden';
+      lv.g.position.set(role === 'parent' ? PARENT_X : 0, 0, 0);
+      for (const it of lv.items) {
+        it.mesh.position.set(0, it.y0, 0);
+        let on = false, op = 0, em = 0;
+        if (role === 'focus') { on = true; op = it.p ? 0.95 : 0.2; em = it.p ? 0.45 : 0.1; }
+        else if (role === 'parent' && it.p) { on = true; op = 0.95; em = 0.45; }
+        set(it.mesh, on, op, em); it.op = op; it.em = em;
+        state(it.lbl, on ? 'on' : '', it.p, true);
+      }
+      if (lv.bracket) { const on = role === 'focus'; set(lv.bracket, on, 0.75, 0.4); lv.link.visible = on; lv.link.material.opacity = on ? 0.75 : 0; }
+    });
+    onion.position.x = i === 6 ? ONION.xFinal : ONION.x;
+    layers.forEach(L => {
+      const fused = L.c > fc || i === 6;
+      L.mesh.visible = fused; setMorph(L, 1); L.mesh.position.copy(L.home); L.mesh.scale.setScalar(1);
+      state(L.lbl, fused ? 'on' : '', true, false);
+    });
+    pointer.visible = i >= 1 && i <= 5; pointer.material.opacity = pointer.visible ? 0.55 : 0;
+  }
+
+  // fuse level c onto the onion: cards slide together, text fades, the blob morphs into a disc and glides to its place
+  function fuse(c, t0) {
+    const lv = levels[c], L = layers[6 - c];
+    for (const it of lv.items) { state(it.lbl, '', it.p, true); move(it.mesh, new THREE.Vector3(0, 0, 0), 1.0, t0); fade(it.mesh, 0.9, 1.0, t0); glow(it.mesh, 0.5, 1.0, t0); }
+    if (lv.bracket) { fade(lv.bracket, 0, 0.7, t0); lineFade(lv.link, 0, 0.7, t0); }
+    const start = new THREE.Vector3(-onion.position.x, -onion.position.y, L.home.z);     // the card blob is at the world origin; keep the layer's depth so it never pops in front of inner discs
+    later(() => { for (const it of lv.items) it.mesh.visible = false; L.mesh.visible = true; L.mesh.position.copy(start); setMorph(L, 0); }, t0 + 1.0);
+    anim(t => { setMorph(L, t); L.mesh.position.lerpVectors(start, L.home, t); }, 1.0, t0 + 1.0, easeInOut);
+    later(() => state(L.lbl, 'on', true, false), t0 + 1.9);
+    return t0 + 2.0;
+  }
+  // the list we are in appears item by item, then its bracket, then the item we zoom out to pops in on the left
+  function reveal(c, t0, skipPick) {
+    const lv = levels[c], par = c > 0 ? levels[c - 1] : null;
+    lv.items.forEach((it, j) => {
+      if (skipPick && it.p) return;
+      const d = t0 + j * 0.18;
+      state(it.lbl, '', it.p, true); it.mesh.material.opacity = 0; it.mesh.visible = false; fade(it.mesh, it.op, 0.4, d); grow(it.mesh, 0.7, d);
+      later(() => state(it.lbl, 'on', it.p, true), d + 0.2);
+    });
+    const tb = t0 + lv.items.length * 0.18;
+    if (lv.bracket) { lv.bracket.material.opacity = 0; lv.bracket.visible = false; fade(lv.bracket, 0.75, 0.7, tb); lv.link.material.opacity = 0; lv.link.visible = false; lineFade(lv.link, 0.75, 0.5, tb + 0.4); }
+    if (par) { const it = par.pick; state(it.lbl, '', true, true); it.mesh.material.opacity = 0; it.mesh.visible = false; fade(it.mesh, 0.95, 0.4, tb + 0.8); grow(it.mesh, 0.9, tb + 0.8); later(() => state(it.lbl, 'on', true, true), tb + 1.2); }
+  }
+
+  function enter(i, prev) {
+    const forward = prev < 0 || prev === i - 1;
+    if (!forward) return;                                   // going back: the resting state is enough
+    const fc = focusOf(i);
+    if (i === 0) { reveal(6, 0.2, false); return; }
+    // 1. the list we were in fuses onto the onion (restore it first, since baseState already removed it)
+    const pf = i === 6 ? 1 : fc + 1, prevLv = levels[pf];
+    prevLv.g.position.set(0, 0, 0);
+    for (const it of prevLv.items) { it.mesh.visible = true; it.mesh.material.opacity = it.p ? 0.95 : 0.2; it.mesh.material.emissiveIntensity = it.p ? 0.45 : 0.1; state(it.lbl, 'on', it.p, true); }
+    if (prevLv.bracket) { prevLv.bracket.visible = true; prevLv.bracket.material.opacity = 0.75; prevLv.link.visible = true; prevLv.link.material.opacity = 0.75; }
+    const L = layers[6 - pf]; L.mesh.visible = false; state(L.lbl, '', true, false);
+    pointer.visible = false; pointer.material.opacity = 0;
+    if (i === 6) {
+      // the root card dissolves with its list, then the finished onion slides to the centre
+      onion.position.x = ONION.x;
+      const root = picked(0); levels[0].g.position.set(PARENT_X, 0, 0); root.mesh.visible = true; root.mesh.material.opacity = 0.95; state(root.lbl, 'on', true, true);
+      const tEnd = fuse(pf, 0.1);
+      fade(root.mesh, 0, 0.8, 0.3); later(() => state(root.lbl, '', true, true), 0.3);
+      move(onion, new THREE.Vector3(ONION.xFinal, ONION.y, 0), 1.6, tEnd + 0.3);
+      return;
+    }
+    const tEnd = fuse(pf, 0.1);
+    // 2. the chosen card glides from the left into the front position and its list unfolds around it
+    const lv = levels[fc];
+    lv.g.position.x = PARENT_X; move(lv.g, new THREE.Vector3(0, 0, 0), 1.3, tEnd - 0.4);
+    for (const it of lv.items) if (!it.p) { it.mesh.visible = false; it.mesh.material.opacity = 0; state(it.lbl, '', false, true); }
+    if (lv.bracket) { lv.bracket.visible = false; lv.bracket.material.opacity = 0; lv.link.visible = false; lv.link.material.opacity = 0; }
+    if (fc > 0) { const p = picked(fc - 1); p.mesh.visible = false; p.mesh.material.opacity = 0; state(p.lbl, '', true, true); }
+    lineFade(pointer, 0.55, 0.6, tEnd + 0.6);
+    reveal(fc, tEnd + 1.0, true);
+  }
+
+  // ---------- ledger: the map so far, one segment added per step, nothing removed ----------
+  const CHAIN = ['ChatGPT, Claude, Gemini…', 'language models', 'generative AI', 'deep learning', 'neural networks', 'machine learning', 'AI'];
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the map so far · ⊂ means “sits inside”</div>';
+    const upto = Math.min(i + 1, 6);
+    const segs = CHAIN.slice(0, upto + 1).map((s, k) => (i === 6 || k === upto) ? `<span class="seg" style="color:${HUE_CSS[6 - k]}">${s}</span>` : s);
+    const chain = document.createElement('div'); chain.className = 'ln now'; chain.innerHTML = segs.join(' ⊂ '); ledgerEl.appendChild(chain);
+    if (steps[i].also) { const el = document.createElement('div'); el.className = 'ln'; el.textContent = steps[i].also; ledgerEl.appendChild(el); }
+  }
+
+  // ---------- camera: fixed framing of the list on the left and the onion on the right ----------
+  const BOX = [-11.6, 23.6, ONION.y - 0.9, ONION.y + 2 * layerR(5) + 1.0];
+  function fitRadius(box) {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
+    const pad = w < 640 ? 1.4 : 1.15;
+    const halfWd = (box[1] - box[0]) / 2 * pad, halfHt = (box[3] - box[2]) / 2 * pad;
+    const tanV = Math.tan(VFOV / 2 * Math.PI / 180);
+    return Math.max(halfHt / tanV, halfWd / (tanV * aspect), 6);
+  }
+  function setCamera(i) { camRadiusGoal = fitRadius(BOX); camYawGoal = -0.05 + 0.02 * i; camGoal.set((BOX[0] + BOX[1]) / 2, (BOX[2] + BOX[3]) / 2, 0); }
+
+  // ---------- player ----------
+  let step = -1, playing = !reduced, stepStart = 0;
+  const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+  const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
+  steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+  function go(i, instant) {
+    const prev = step;
+    step = (i + steps.length) % steps.length; stepStart = now;
+    baseState(step);
+    titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; renderLedger(step);
+    countEl.textContent = (step + 1) + ' / ' + steps.length;
+    [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
+    layout(); setCamera(step);
+    if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camTarget.copy(camGoal); }
+    enter(step, prev);
+  }
+  function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; }
+  document.getElementById('next').onclick = () => go(step + 1);
+  document.getElementById('prev').onclick = () => go(step - 1);
+  playBtn.onclick = () => setPlaying(!playing);
+  window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+
+  // the stage is everything above the deck; the deck's height changes with the text, so re-measure on every step and resize
+  function layout() {
+    const h = Math.max(160, window.innerHeight - deck.offsetHeight);
+    stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
+    const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (step >= 0) camRadiusGoal = fitRadius(BOX);
+  }
+  window.addEventListener('resize', layout);
+
+  let last = performance.now();
+  function frame(tms) {
+    const dt = Math.min(document.hidden ? 1 : 0.05, (tms - last) / 1000); last = tms; now += dt;
+    if (playing) { const el = now - stepStart, d = steps[step].dur; dotsEl.children[step].firstChild.style.width = Math.min(100, 100 * el / d) + '%'; if (el >= d) { if (step === steps.length - 1) setPlaying(false); else go(step + 1); } }
+    stepAnims();
+    const k = reduced ? 1 : 1 - Math.pow(0.03, dt);
+    camRadius = lerp(camRadius, camRadiusGoal, k); camYaw = lerp(camYaw, camYawGoal, k); camTarget.lerp(camGoal, k);
+    const drift = reduced ? 0 : Math.sin(now * 0.2) * 0.02;
+    camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * 0.05, camTarget.z + Math.cos(camYaw + drift) * camRadius);
+    camera.lookAt(camTarget);
+    updateLinks();
+    placeLabels();
+    renderer.render(scene, camera);
+    schedule(frame);
+  }
+  // animation frames stop in a hidden tab; fall back to a timer so the pill keeps its place
+  function schedule(fn) { if (document.hidden) setTimeout(() => fn(performance.now()), 33); else requestAnimationFrame(fn); }
+  layout(); go(0, true); schedule(frame);
+})();
+</script>
