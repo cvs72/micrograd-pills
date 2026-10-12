@@ -1,19 +1,4 @@
- build.js                                   | 14 ++++++++++++++
- loop/PLAN.md                               |  2 +-
- loop/progress.md                           |  3 +++
- loop/reviews/diff-stat.txt                 |  8 --------
- loop/reviews/queue.txt                     |  2 +-
- site/kit/pill.css                          |  8 ++++++++
- site/pills/01-the-map.html                 |  9 ++++++++-
- site/pills/02-a-neuron-from-outside.html   |  9 ++++++++-
- site/pills/03-a-network-at-work.html       |  9 ++++++++-
- site/pills/04-one-knob.html                |  9 ++++++++-
- site/pills/05-the-straight-line.html       |  9 ++++++++-
- site/pills/06-s-curve-and-hinge.html       |  9 ++++++++-
- site/pills/07-the-bowl.html                |  9 ++++++++-
- site/pills/08-the-slope.html               |  9 ++++++++-
- site/pills/09-the-chain-rule.html          |  9 ++++++++-
- site/pills/10-one-neuron-every-number.html |  9 ++++++++-
- site/pills/11-downhill.html                |  9 ++++++++-
- site/pills/12-the-names.html               |  9 ++++++++-
- 18 files changed, 123 insertions(+), 22 deletions(-)
+ loop/feedback.md           |  2 +-
+ loop/reviews/diff-stat.txt | 19 -------------------
+ loop/reviews/queue.txt     |  3 ++-
+ 3 files changed, 3 insertions(+), 21 deletions(-)
