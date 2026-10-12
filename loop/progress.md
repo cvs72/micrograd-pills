@@ -5,3 +5,6 @@ Imperfect: the font and script swaps are same-content, so pixels should match, b
 K01 (retry): feedback listed all captures missing; re-ran `node loop/tools/shots.mjs loop/shots` and it crashes again at newPage (chrome-headless-shell closes, hiservices-xpcservice "Connection invalid"), so no captures exist in this sandbox.
 Verified again: `pages.mjs local links` ok. The captures-identical check could not run, so K01 stays un-ticked.
 BLOCKED: the browser cannot launch here; I did not bypass the sandbox or touch the tools/baseline. The wiring edits from the previous iteration are unchanged.
+K01 (retry 2): re-ran `node loop/tools/shots.mjs loop/shots`; it crashes at newPage again (chrome-headless-shell, hiservices-xpcservice "Connection invalid"), so no captures exist.
+Verified again: `pages.mjs local links` ok. Wiring edits unchanged; nothing further to fix in the sources.
+BLOCKED: the browser cannot launch in this sandbox, so the captures-identical check did not run and K01 stays un-ticked. I did not touch the tools or baseline.
