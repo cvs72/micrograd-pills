@@ -11,3 +11,6 @@ BLOCKED: the browser cannot launch in this sandbox, so the captures-identical ch
 K01 (retry 3): the capture tool now launches. Rebuilt with `node build.js` and re-captured all 12 pills.
 Verified: html-validate clean, `pages.mjs local links` ok, compare.mjs: 83 images and 12 content dumps, 0 problems (worst 0.06% on 01-the-map-04).
 K01 ticked. Nothing imperfect that I know of; the sources were unchanged this iteration.
+K02: every pill source now starts with `<!DOCTYPE html>`, `<html lang="en">`, `<head>` (charset, viewport, one-sentence description, title "NN · Name · Knowledge pills"), then `</head><body>` before the stage and `</body></html>` after the script; index got a description. build.js's script regex accepts the closing tags.
+Verified: node build.js, html-validate clean, `pages.mjs skeleton` ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.06%).
+Imperfect: the descriptions are my own wording of each pill's idea; pill 02's title keeps its existing short name "Neuron From Outside".

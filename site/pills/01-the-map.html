@@ -1,4 +1,10 @@
-<title>The AI Map</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Where neural networks sit inside the map of artificial intelligence, zooming out one level at a time.">
+<title>01 · The AI Map · Knowledge pills</title>
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
 <style>
   /* Left: a bracketed vertical list of cards, one colour per level, with the item we zoom out to on its left.
@@ -58,6 +64,8 @@
   @media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
 </style>
 
+</head>
+<body>
 <div id="stage"></div>
 <div id="labels"></div>
 <div id="eyebrow"><span>Knowledge pill <b>01</b> · the map</span><span id="count">1 / 7</span></div>
@@ -429,3 +437,5 @@ window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' 
   layout(); go(0, true); schedule(frame);
 })();
 </script>
+</body>
+</html>
