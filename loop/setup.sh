@@ -27,6 +27,9 @@ for exe in ("claude", "node", "npm", "npx", "gitleaks", "git", "jq", "rg", "perl
 # Playwright's browsers (macOS and Linux caches), unless PLAYWRIGHT_BROWSERS_PATH points elsewhere
 for c in (os.environ.get("PLAYWRIGHT_BROWSERS_PATH"), f"{home}/Library/Caches/ms-playwright", f"{home}/.cache/ms-playwright"):
     if c and os.path.isdir(c): add(c)
+# git refuses to run when the global config exists but cannot be read
+for c in (f"{home}/.gitconfig", f"{home}/.config/git"):
+    if os.path.exists(c): add(c)
 cfg = {
   "network": {"allowedDomains": ["api.anthropic.com", "claude.ai", "platform.claude.com"], "deniedDomains": [],
               "allowLocalBinding": True},  # the capture tool serves site/ on a loopback port for headless Chromium

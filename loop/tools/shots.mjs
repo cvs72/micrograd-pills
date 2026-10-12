@@ -52,11 +52,13 @@ const skipDraws = () => {
 const pills = fs.readdirSync(path.join(SITE, 'pills')).filter(f => f.endsWith('.html')).map(f => f.slice(0, -5))
   .filter(s => !only.length || only.includes(s)).sort();
 fs.mkdirSync(out, { recursive: true });
-// single-process: inside the OS sandbox Chromium may not register the Mach port its child processes would use
-const browser = await chromium.launch({ args: process.env.SHOTS_MULTI ? [] : ['--single-process', '--no-zygote'] });
+// single-process: inside the OS sandbox Chromium may not register the Mach port its child processes would use;
+// in that mode a browser serves one context reliably, so every pill gets its own browser (launch is cheap)
+const launch = () => chromium.launch({ args: process.env.SHOTS_MULTI ? [] : ['--single-process', '--no-zygote'] });
 let failed = 0;
 
 async function capture(slug) {
+  const browser = await launch();
   const ctx = await browser.newContext({ viewport: VIEW, deviceScaleFactor: 1 });
   await ctx.addInitScript(skipDraws);
   await ctx.clock.install({ time: 0 });
@@ -100,9 +102,9 @@ async function capture(slug) {
   if (errors.length) { failed++; console.log(`${slug}: ${errors.length} error(s) in the page: ${errors[0]}`); }
   console.log(`${slug}: ${n} steps captured`);
   await ctx.close();
+  await browser.close();
 }
 const queue = [...pills];
 await Promise.all(Array.from({ length: Math.min(WORKERS, queue.length) }, async () => { while (queue.length) await capture(queue.shift()); }));
-await browser.close();
 server.close();
 process.exit(failed ? 1 : 0);
