@@ -1,0 +1,216 @@
+/* Pill 10: one neuron of the digit network with nothing hidden. First-row neuron 10 at the random start, reading
+the 7: 64 inputs times 64 weights, the sum and the bias, the squash, then the blame coming back and the slope of
+all 65 knobs. Every number comes from digits/neuron.json, produced by a numpy script next to the training script. */
+(function () {
+  'use strict';
+  const K = Pill.create({ fog: [90,190], far: 400, radius: 40, grid: [260,130,0,-21] });
+  const { label, say, state, glowMat, lineMat, anim, lerp, later, on, clearAnims, makePanel, scene, easeInOut } = K;
+
+  // ---------- one neuron at the random start, reading the 7: every number of its forward and backward pass ----------
+  const NE = {"neuron":10,"pixel":21,"label":7,"loss":2.155400738395889,"x":[0.0,0.0,0.125,0.75,0.5,0.4375,0.375,0.125,0.0,0.0,0.5625,1.0,0.9375,1.0,1.0,0.3125,0.0,0.0,0.8125,0.6875,0.0,0.625,0.875,0.0,0.0,0.0,0.6875,0.1875,0.125,0.9375,0.25,0.0,0.0,0.0,0.0,0.0,0.6875,0.5625,0.0,0.0,0.0,0.0,0.0,0.5,1.0,0.25,0.0,0.0,0.0,0.0,0.0,0.9375,0.75,0.0,0.0,0.0,0.0,0.0,0.25,1.0,0.125,0.0,0.0,0.0],"w":[0.10992474685785357,-0.08318871341108679,0.017803217008820656,-0.11875275686382265,0.24959136146147332,-0.0818484619286738,0.011323113362718193,-0.09113547971795107,0.019428665958558255,-0.21959022280982282,0.1889035541595902,0.12497803086378682,0.08774420327765876,0.1004481274223252,0.04163379657728189,0.13566087555573875,0.1669730420400291,-0.010886771381563737,-0.14707683992866274,-0.07674710017411214,0.23097812661950567,0.15646562607064937,-0.026336251795394602,0.22469931530428933,0.007548241053052137,-0.02526040567367551,0.21921137833763513,-0.2364932816639888,-0.028178931153512412,0.11753618311044862,-0.03534946864344626,-0.051809133229482315,-0.06598970466553919,-0.1339953190362774,0.12170793891801127,-0.11177591899743466,-0.031826021220753765,0.24172418564852335,0.09108927925929323,0.21745600524137645,0.021213318142851514,-0.0027809743561513422,0.23911935096646902,0.15609472155131332,0.12139237585286394,-0.040693126439941475,0.014323054627984777,-0.21029081022387835,-0.2225922634454338,-0.27677342138037536,0.036027382886290524,-0.30176348137887965,-0.0284274265804855,-0.056679787296074105,-0.1024692410963555,-0.056423056370549396,-0.0380533453570834,0.07233270422689583,-0.0261290320034275,-0.056246297733081145,-0.21489514173450583,-0.03386170338386717,0.01098345463509094,0.07064417235122118],"b":0.0,"prod":[0.0,-0.0,0.002225402126102582,-0.089064567647867,0.12479568073073666,-0.03580870209379479,0.004246167511019323,-0.011391934964743883,0.0,-0.0,0.10625824921476949,0.12497803086378682,0.08226019057280509,0.1004481274223252,0.04163379657728189,0.042394023611168355,0.0,-0.0,-0.11949993244203848,-0.052763631369702094,0.0,0.09779101629415586,-0.023044220320970275,0.0,0.0,-0.0,0.15070782260712415,-0.0443424903119979,-0.0035223663941890515,0.11019017166604558,-0.008837367160861564,-0.0,-0.0,-0.0,0.0,-0.0,-0.021880389589268214,0.1359698544272944,0.0,0.0,0.0,-0.0,0.0,0.07804736077565666,0.12139237585286394,-0.010173281609985369,0.0,-0.0,-0.0,-0.0,0.0,-0.2829032637926997,-0.021320569935364124,-0.0,-0.0,-0.0,-0.0,0.0,-0.006532258000856875,-0.056246297733081145,-0.02686189271681323,-0.0,0.0,0.0],"sum_pos":1.323338270253136,"sum_neg":-0.8141931660842338,"z":0.5091451041689022,"h":0.4692788380043851,"squash_slope":0.7797773722012541,"dark":[0,1,8,9,16,17,20,23,24,25,31,32,33,34,35,38,39,40,41,42,46,47,48,49,50,53,54,55,56,57,61,62,63],"n_dark":33,"big_prod":51,"big_w":51,"g2":[-0.03597794463413651,0.341036788265021,-0.2139735880699735,-0.006299581714880226,0.006690546262674451,-0.2521265664749722,-0.2960367121411043,0.05064121845232974,0.2576918938522572,0.14695721871512532,-0.03352362646800111,-0.005436913507306421,-0.04277955188308219,-0.03171782599759631,0.6395764318923322,-0.046663348926079776],"w2":[0.1079831456618612,-0.07675651768787373,0.1397231468420984,0.17316785937058152,0.22834006475853305,0.31436569306684903,-0.1531621817438883,0.0024568795163422055,0.0019936339388047955,-0.017337121341124927,-0.11477455330732587,-0.2626127415894406,0.016383566190930305,-0.1358273743073478,0.015201643343620114,-0.14036839322316058],"back_terms":[-0.00388501163604234,-0.02617679627067973,-0.029897063066231584,-0.0010908850804958656,0.0015277197668890454,-0.07925994281046962,0.04534162870781896,0.00012441937229813987,0.0005137433053387428,-0.002547815132818363,0.003847659253106474,0.0014278027619384001,-0.0007008816198948142,0.00430814902399084,0.009722612808612374,0.006550059311165514],"big_back":5,"blame_h":-0.07019460130547385,"blame_z":-0.05473616174869712,"slopes":[-0.0,-0.0,-0.00684202021858714,-0.04105212131152284,-0.02736808087434856,-0.02394707076505499,-0.02052606065576142,-0.00684202021858714,-0.0,-0.0,-0.030789090983642128,-0.05473616174869712,-0.05131515163940355,-0.05473616174869712,-0.05473616174869712,-0.01710505054646785,-0.0,-0.0,-0.04447313142081641,-0.03763111120222927,-0.0,-0.0342101010929357,-0.04789414153010998,-0.0,-0.0,-0.0,-0.03763111120222927,-0.01026303032788071,-0.00684202021858714,-0.05131515163940355,-0.01368404043717428,-0.0,-0.0,-0.0,-0.0,-0.0,-0.03763111120222927,-0.030789090983642128,-0.0,-0.0,-0.0,-0.0,-0.0,-0.02736808087434856,-0.05473616174869712,-0.01368404043717428,-0.0,-0.0,-0.0,-0.0,-0.0,-0.05131515163940355,-0.04105212131152284,-0.0,-0.0,-0.0,-0.0,-0.0,-0.01368404043717428,-0.05473616174869712,-0.00684202021858714,-0.0,-0.0,-0.0],"slope_b":-0.05473616174869712,"big_slope":11,"nudged_w21":-0.03421010108750622,"nudged_b":-0.05473616172313456,"nudged_big":-0.05473616172313456,"n_knobs":2778,"n_neurons":58};
+  const PX = NE.pixel, BIG = NE.big_prod, BB = NE.big_back, J = NE.neuron;
+  const f4 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(4), f5 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(5), f3 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(3);
+  const f2 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2), n = v => v.toLocaleString('en');
+  const fx = v => { let s = v.toFixed(4).replace(/0+$/, '').replace(/\.$/, ''); return s; };  // inputs are sixteenths: 0.625, 0.0625, 1, 0
+  const wmax = Math.max(...NE.w.map(Math.abs)), pmax = Math.max(...NE.prod.map(Math.abs)), smax = Math.max(...NE.slopes.map(Math.abs)), g2max = Math.max(...NE.g2.map(Math.abs));
+
+  // ---------- scene ----------
+  const C = { input: 0x4fd1ff, knob: 0xf5b942, signal: 0xc084fc, output: 0x5eead4, bad: 0xfb7185, node: 0x3a4a86, dark: 0x11182e, dim: 0x4a557a, axis: 0x3a4670, faint: 0x1e2746 };
+  const COL = { input: new THREE.Color(C.input), knob: new THREE.Color(C.knob), signal: new THREE.Color(C.signal), output: new THREE.Color(C.output), bad: new THREE.Color(C.bad), dark: new THREE.Color(C.dark) };
+
+  // ---------- labels ----------
+  const anchor = (x, y, z) => { const a = new THREE.Object3D(); a.position.set(x, y, z || 0); scene.add(a); return a; };
+  const mk = (hue, x, y, cls, ref) => label(hue, anchor(x, y, 0.1), cls, ref || 30);
+
+  // ---------- the four grids: inputs × weights = products, and later the slopes ----------
+  const GP = 1.3, TS = 1.18, GY = 2, GX = -24.8, GW = -11.4, GPd = 2, SY = -11.2;
+  const tileGeo = new THREE.PlaneGeometry(TS, TS), frameGeo = new THREE.PlaneGeometry(TS + 0.18, TS + 0.18);
+  const paint = (t, col, a) => { t.material.color.copy(COL.dark).lerp(col, 0.12 + 0.68 * a); t.material.emissive.copy(t.material.color); t.material.emissiveIntensity = 0.25 + 0.5 * a; };
+  const unpaint = t => { t.material.color.setHex(C.dark); t.material.emissive.setHex(C.dark); t.material.emissiveIntensity = 0.2; };
+  function makeGrid(cx, cy, cellCls) {
+    const at = i => [cx + (i % 8 - 3.5) * GP, cy + (3.5 - Math.floor(i / 8)) * GP];
+    const tiles = [], cells = [];
+    for (let i = 0; i < 64; i++) { const p = at(i), t = new THREE.Mesh(tileGeo, glowMat(C.dark)); unpaint(t); t.position.set(p[0], p[1], 0); scene.add(t); tiles.push(t); cells.push(mk('#eef1fb', p[0], p[1], 'cell mono' + (cellCls || ''))); }
+    const frame = (i, color) => { const p = at(i), f = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })); f.position.set(p[0], p[1], -0.01); f.visible = false; scene.add(f); return f; };
+    return { cx, cy, at, tiles, cells, frame, cellsState: s => cells.forEach(L => state(L, s)) };
+  }
+  const Gx = makeGrid(GX, GY), Gw = makeGrid(GW, GY), Gp = makeGrid(GPd, GY), Gs = makeGrid(GX, SY, ' sm');
+  Gx.tiles.forEach((t, i) => { paint(t, COL.input, NE.x[i]); say(Gx.cells[i], fx(NE.x[i])); });
+  Gw.tiles.forEach((t, i) => { paint(t, COL.knob, Math.sqrt(Math.abs(NE.w[i]) / wmax)); say(Gw.cells[i], f3(NE.w[i])); });
+  Gp.tiles.forEach((t, i) => say(Gp.cells[i], f3(NE.prod[i])));
+  const paintProd = (i, k) => paint(Gp.tiles[i], COL.signal, Math.sqrt(Math.abs(NE.prod[i]) / pmax) * (k === undefined ? 1 : k));
+  const paintSlope = i => paint(Gs.tiles[i], NE.slopes[i] < 0 ? COL.output : COL.bad, Math.sqrt(Math.abs(NE.slopes[i]) / smax));
+  Gs.tiles.forEach((t, i) => { paintSlope(i); say(Gs.cells[i], f4(NE.slopes[i])); t.visible = false; });
+  const biasTile = new THREE.Mesh(tileGeo, glowMat(C.dark)); biasTile.position.set(-16.6, SY, 0); scene.add(biasTile); paint(biasTile, NE.slope_b < 0 ? COL.output : COL.bad, Math.sqrt(Math.abs(NE.slope_b) / smax)); biasTile.visible = false;
+  const biasCell = mk('#eef1fb', -16.6, SY, 'cell mono sm'); say(biasCell, f4(NE.slope_b));
+  const F = { x21: Gx.frame(PX, C.knob), w21: Gw.frame(PX, C.knob), p21: Gp.frame(PX, C.knob), xB: Gx.frame(BIG, C.signal), wB: Gw.frame(BIG, C.signal), pB: Gp.frame(BIG, C.signal), s21: Gs.frame(PX, C.knob) };
+
+  // ---------- the neuron: body, bias, squash, output, the 16 readers ----------
+  const BX = 12, OX = 25, RX = 31, pB = [BX, GY], pO = [OX, GY], pBias = [14.2, -0.3], posR = k => [RX, GY + (7.5 - k) * 0.75];
+  const nodeGeo = r => new THREE.SphereGeometry(r, 24, 16);
+  const body = new THREE.Mesh(nodeGeo(1.0), glowMat(C.node)); body.material.emissiveIntensity = 0.3; body.position.set(BX, GY, 0); scene.add(body);
+  const biasRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.11, 16, 40), glowMat(C.knob)); biasRing.material.emissiveIntensity = 0.6; biasRing.position.set(pBias[0], pBias[1], 0); scene.add(biasRing);
+  const outNode = new THREE.Mesh(nodeGeo(0.5), glowMat(C.output)); outNode.material.emissiveIntensity = 0.3; outNode.position.set(OX, GY, 0); scene.add(outNode);
+  const R2 = Array.from({ length: 16 }, (_, k) => { const m = new THREE.Mesh(nodeGeo(0.21), glowMat(C.node)); m.material.emissiveIntensity = 0.35; m.position.set(...posR(k), 0); scene.add(m); return m; });
+  // every wire, faint: products into the body, body to output, output to the 16
+  { const pts = []; const add = (a, b) => pts.push(new THREE.Vector3(a[0], a[1], -0.05), new THREE.Vector3(b[0], b[1], -0.05));
+    for (let i = 0; i < 64; i++) add(Gp.at(i), pB); add(pBias, pB); add(pB, pO); for (let k = 0; k < 16; k++) add(pO, posR(k));
+    scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lineMat(C.axis, 0.3))); }
+  function tube(a, b, r, color, z) { const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), zz = z === undefined ? 0.02 : z; const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 8, 1), glowMat(color)); m.material.emissiveIntensity = 0.8;
+    m.rotation.z = Math.atan2(dy, dx) - Math.PI / 2; m.userData = { a, b, len }; m.visible = false; scene.add(m); m.set = t => { const k = t === undefined ? 1 : t; m.scale.y = Math.max(0.001, len * k); m.position.set(a[0] + dx * k / 2, a[1] + dy * k / 2, zz); m.visible = k > 0.002; }; m.set(1); m.visible = false; return m; }
+  const T = {
+    sum: Array.from({ length: 64 }, (_, i) => tube(Gp.at(i), pB, 0.014, C.signal, -0.03)),  // behind the tiles: they emerge at the grid's edge without crossing the numbers
+    bias: tube(pBias, pB, 0.05, C.knob), out: tube(pB, pO, 0.06, C.output),
+    f16: Array.from({ length: 16 }, (_, k) => tube(pO, posR(k), 0.03, C.signal)),
+    down: tube([BX, 0.9], [BX, -7.4], 0.06, C.bad), left: tube([BX, -7.4], [-15.6, -7.4], 0.06, C.bad),
+    fwd: tube([-30.5, 10.2], [33, 10.2], 0.06, C.output), bwd: tube([33, -18.4], [-30.5, -18.4], 0.06, C.bad)
+  };
+  const coneGeo = new THREE.ConeGeometry(0.26, 0.7, 12);
+  const cone = (x, y, rz, color) => { const m = new THREE.Mesh(coneGeo, glowMat(color)); m.material.emissiveIntensity = 0.8; m.rotation.z = rz; m.position.set(x, y, 0.02); m.visible = false; scene.add(m); return m; };
+  const leftHead = cone(-15.9, -7.4, Math.PI / 2, C.bad), fwdHead = cone(33.3, 10.2, -Math.PI / 2, C.output), bwdHead = cone(-30.8, -18.4, Math.PI / 2, C.bad);
+
+  // ---------- panels: the squash with its slope, and the 16 terms that come back ----------
+  const PT = makePanel({ x0: 16.5, w: 5, y0: 4.3, h: 4, xmin: -3, xmax: 3, ymin: -1, ymax: 1, xt: [-3, 0, 3], yt: [-1, 0, 1], xName: 'z, the sum', yName: 'h = tanh(z), the squash', xHue: '#c084fc', yHue: '#c084fc' });
+  const tmin = Math.min(...NE.back_terms), tmax = Math.max(...NE.back_terms);
+  const bymin = Math.min(-0.05, Math.floor(tmin * 1.15 / 0.05) * 0.05), bymax = Math.max(0.05, Math.ceil(tmax * 1.15 / 0.05) * 0.05);
+  const byt = []; for (let v = bymin; v <= bymax + 1e-9; v += 0.05) byt.push(Math.round(v * 100) / 100);
+  const PB = makePanel({ x0: 23.5, w: 8.5, y0: -9.5, h: 4.5, xmin: -0.5, xmax: 15.5, ymin: bymin, ymax: bymax, xt: [0, 5, 10, 15], yt: byt, noXLines: true, noYAxis: true, yf: v => v === 0 ? '0' : f2(v),
+    xName: `what each of the 16 sends back: its blame × the weight on the wire`, yName: '', xHue: '#fb7185', yHue: '#fb7185' });
+  const zs = Array.from({ length: 121 }, (_, k) => -3 + 0.05 * k);
+  const S = { curve: PT.add(zs.map(z => [PT.px(z), PT.py(Math.tanh(z))]), C.signal), tan: PT.seg(C.knob, 1, 0.04) };
+  const tanAt = t => S.tan.set(NE.z - 1.2, NE.h - 1.2 * NE.squash_slope, NE.z + 1.2, NE.h + 1.2 * NE.squash_slope, t);
+  const dotT = PT.dot(C.knob, 0.16); dotT.position.set(PT.px(NE.z), PT.py(NE.h), 0.05);
+  const bars = NE.back_terms.map((v, k) => { const b = PB.bar(v > 0 ? C.bad : C.output); b.userData.v = v; return b; });
+  const setBar = (b, t) => { const v = b.userData.v * t, k = bars.indexOf(b); b.scale.set(0.36, Math.max(0.01, Math.abs(PB.py(v) - PB.py(0))), 1); b.position.set(PB.px(k), (PB.py(v) + PB.py(0)) / 2, 0.02); b.visible = true; };
+
+  // ---------- labels on the scene ----------
+  const tl = {
+    hx: mk('#8e99bd', GX, 7.95, 'head'), hw: mk('#8e99bd', GW, 7.95, 'head'), hp: mk('#8e99bd', GPd, 7.95, 'head'), hn: mk('#8e99bd', BX + 0.6, 4.3, 'head'), hr: mk('#8e99bd', RX, 8.5, 'head'), ho: mk('#8e99bd', OX, 3.75, 'head'),
+    op1: mk('#8e99bd', -18.1, GY, 'op'), op2: mk('#8e99bd', -4.7, GY, 'op'),
+    t21: mk('#f5b942', GPd, -4.0, 'tag mono'), tB: mk('#c084fc', GW, -4.0, 'tag mono'), tdark: mk('#4fd1ff', GX, -4.0, 'tag mono'),
+    tz: mk('#c084fc', BX + 1.3, 2.9, 'tag mono left'), hb: mk('#f5b942', pBias[0], pBias[1] - 1.0, 'tag mono'),
+    tout: mk('#5eead4', OX, 3.0, 'tag mono'), ttan: mk('#f5b942', PT.px(NE.z) + 0.5, PT.py(NE.h) - 0.6, 'tag mono left'), tsq: mk('#c084fc', 19, 1.15, 'tag'),
+    tin: mk('#fb7185', OX, 0.95, 'tag mono'), tback: mk('#c084fc', 20, 0.2, 'tag mono'), tbl: mk('#5eead4', 10, 5.0, 'tag mono'),
+    tsum16: mk('#fb7185', PB.px(7.5), -4.4, 'tag mono'), tbig: mk('#fb7185', PB.px(BB) + 0.4, PB.py(NE.back_terms[BB]) - 0.3, 'tag mono left'),
+    hs: mk('#8e99bd', GX, SY + 5.7, 'head'), hbias: mk('#8e99bd', -16.6, SY + 1.0, 'head'), tbias: mk('#5eead4', -16.6, SY - 1.0, 'tag mono'),
+    t21s: mk('#f5b942', GX, SY - 6.3, 'tag mono'), tdarks: mk('#8e99bd', -18.9, SY - 2.2, 'tag mono left'), tarrow: mk('#fb7185', -15.6, -8.2, 'tag left'),
+    fwd: mk('#5eead4', 1, 10.95, 'tag big', 20), bwd: mk('#fb7185', 1, -19.15, 'tag big', 20)
+  };
+  say(tl.hx, '64 inputs · the 7'); say(tl.hw, '64 weights'); say(tl.hp, '64 products'); say(tl.hn, `neuron ${J}`); say(tl.hr, '16 neurons of the next row'); say(tl.ho, 'one output');
+  say(tl.op1, '×'); say(tl.op2, '=');
+  say(tl.t21, `pixel ${PX}: ${fx(NE.x[PX])} × ${f4(NE.w[PX])} = ${f4(NE.prod[PX])}`); say(tl.tB, `pixel ${BIG}: ${fx(NE.x[BIG])} × ${f4(NE.w[BIG])} = ${f4(NE.prod[BIG])}`); say(tl.tdark, `${NE.n_dark} dark pixels: 0 × w = 0`);
+  say(tl.tz, `z = ${f4(NE.z)}`); say(tl.hb, `bias b = ${NE.b}`); say(tl.tout, `h = ${f4(NE.h)}`); say(tl.ttan, `slope here: ${f4(NE.squash_slope)}`); say(tl.tsq, 'the squash: tanh');
+  say(tl.tin, `arrives: ${f5(NE.blame_h)}`); say(tl.tback, `× ${f4(NE.squash_slope)} (the squash’s slope)`); say(tl.tbl, `blame ${f5(NE.blame_z)}`);
+  say(tl.tsum16, `16 terms add to ${f5(NE.blame_h)}`); say(tl.tbig, `neuron ${BB}: ${f4(NE.g2[BB])} × ${f4(NE.w2[BB])}`);
+  say(tl.hs, 'slope of each weight = blame × input'); say(tl.hbias, 'bias'); say(tl.tbias, `× 1 = ${f5(NE.slope_b)}`);
+  say(tl.t21s, `pixel ${PX}: ${f5(NE.blame_z)} × ${fx(NE.x[PX])} = ${f5(NE.slopes[PX])}<br>nudged: ${f5(NE.nudged_w21)}`); say(tl.tdarks, `${NE.n_dark} dark pixels: slope 0`);
+  say(tl.tarrow, 'the blame, × the input on each wire → the slope of each knob');
+  say(tl.fwd, 'forward: multiply, add, squash · one pass gives every value'); say(tl.bwd, `backward: blame in · × the squash’s slope · × each input · ${n(NE.n_knobs)} slopes in one walk`);
+
+  // blame colours: teal when the loss falls as the value grows, pink when it rises; brightness by size
+  const colNode = (m, g, gmax) => { const a = Math.sqrt(Math.min(1, Math.abs(g) / gmax)); m.material.color.setHex(C.node).lerp(g < 0 ? COL.output : COL.bad, a); m.material.emissive.copy(m.material.color); m.material.emissiveIntensity = 0.35 + 0.6 * a; };
+  const resetNode = m => { m.material.color.setHex(C.node); m.material.emissive.setHex(C.node); m.material.emissiveIntensity = 0.35; };
+  const setBody = (summed, k) => { const t = k === undefined ? 1 : k; body.material.color.setHex(C.node); if (summed) body.material.color.lerp(COL.signal, t); body.material.emissive.copy(body.material.color); body.material.emissiveIntensity = 0.3 + 0.35 * (summed ? t : 0); };
+
+  // ---------- tiny tween engine ----------
+  // a tube keeps its length (scale.y) and swells in radius only
+  function pulse(mesh, dur, delay) { const s = mesh.scale.x; anim(t => { if (mesh.set) { const g = s * (1 + 1.5 * Math.sin(Math.PI * t)); mesh.scale.x = g; mesh.scale.z = g; } else mesh.scale.setScalar(s * (1 + 0.3 * Math.sin(Math.PI * t))); }, dur, delay); }
+  const growT = (tb, dur, at) => anim(t => tb.set(t), dur, at);
+  const growAll = (ts, dur, at, stagger) => ts.forEach((tb, i) => growT(tb, dur, at + (stagger || 0) * i));
+  const pop = (mesh, dur, at) => { mesh.visible = false; anim(t => { mesh.visible = true; mesh.scale.setScalar(Math.max(0.01, t)); }, dur, at); };
+
+  // ---------- the steps ----------
+  const S1 = [-31, 33, -5.5, 9.9], S2 = [-31, 7.2, -4.8, 8.6], S3 = [-4.5, 17.5, -2.6, 9.9], S4 = [10.5, 33, -4.2, 9.9], S5 = [10.5, 35, -11.6, 9.9], S6 = [-31.2, -13.6, -18.4, -5.3], S7 = [-32, 35, -19.9, 11.6];
+  const steps = [
+    { dur: 17, title: 'One neuron, every number', box: S1, yaw: 0,
+      text: `Pills 02 to 09 took a neuron apart piece by piece and never showed all of it at once. Here is one in full: neuron ${J} of the first row, the one of pills 05, 06 and 09, at the random start, reading the 7. Its inputs are the 64 pixels. It owns 64 weights, one per pixel, and one bias: 65 knobs. One number leaves it, and the 16 neurons of the next row read that number through their own weights. Two passes follow, forward and back, with nothing hidden.`,
+      line: `neuron ${J} of the first row · the 7 at the random start · 64 inputs · 64 weights + 1 bias = 65 knobs · 1 output` },
+    { dur: 19, title: 'Multiply', box: S2, yaw: -0.03,
+      text: `Each input times its weight. Pixel ${PX} is lit at ${fx(NE.x[PX])} and its weight is ${f4(NE.w[PX])}; the product is ${f4(NE.prod[PX])}, how hard this pixel pushes the neuron. Pixel ${BIG}, at ${fx(NE.x[BIG])} with weight ${f4(NE.w[BIG])}, pushes the other way: ${f4(NE.prod[BIG])}, the strongest push of the 64. The 7 has ${NE.n_dark} dark pixels, and 0 times anything is 0: for this picture those ${NE.n_dark} weights do nothing, whatever their value. 64 multiplications, 64 products.`,
+      line: `pixel ${PX}: ${fx(NE.x[PX])} × ${f4(NE.w[PX])} = ${f4(NE.prod[PX])} · pixel ${BIG}: ${fx(NE.x[BIG])} × ${f4(NE.w[BIG])} = ${f4(NE.prod[BIG])} · ${NE.n_dark} dark pixels: 0 · 64 products` },
+    { dur: 17, title: 'Add', box: S3, yaw: 0,
+      text: `The 64 products are added into one number. The positive ones come to ${f4(NE.sum_pos)}, the negative ones to ${f4(NE.sum_neg)}. The bias is added last: at the random start every bias is ${NE.b}, so it changes nothing yet, but it is a knob like the weights and training will turn it. The sum is z = ${f4(NE.z)}. That is all this neuron knows about the 7: one number, built from 64 pushes.`,
+      line: `${f4(NE.sum_pos)} + (${f4(NE.sum_neg)}) + bias ${NE.b} = z ${f4(NE.z)}` },
+    { dur: 17, title: 'Squash', box: S4, yaw: 0.03,
+      text: `The sum goes through tanh, the S-curve of pill 06: tanh(${f4(NE.z)}) = ${f4(NE.h)}. At that point the curve has slope ${f4(NE.squash_slope)}, a number the backward pass is about to need. The output, h = ${f4(NE.h)}, is all the next row ever sees of this neuron: the products, the sum and the bias stay inside. Sixteen neurons read it, each through its own weight.`,
+      line: `tanh(${f4(NE.z)}) = ${f4(NE.h)} · slope there ${f4(NE.squash_slope)} · one number leaves, read 16 times` },
+    { dur: 20, title: 'The blame comes back', box: S5, yaw: 0.03,
+      text: `Pill 09 gave every neuron a blame: the slope of the loss against its sum. The 16 neurons of the next row already have theirs, since the walk back arrives from the loss row by row. Each sends back its blame times the weight on the wire between them. The 16 products add to ${f5(NE.blame_h)}, the slope of the loss against this neuron’s output. Back through the squash, times its slope ${f4(NE.squash_slope)}: ${f5(NE.blame_z)}, the blame of this neuron’s sum. Negative: the 7’s loss falls if the sum grows.`,
+      line: `16 × (blame × weight) add to ${f5(NE.blame_h)} · × ${f4(NE.squash_slope)} = blame ${f5(NE.blame_z)}` },
+    { dur: 19, title: 'Every knob’s slope', box: S6, yaw: -0.03,
+      text: `A knob’s slope is the blame times the input on its wire. Pixel ${PX}: ${f5(NE.blame_z)} × ${fx(NE.x[PX])} = ${f5(NE.slopes[PX])}; nudging that weight and measuring the loss again gives ${f5(NE.nudged_w21)}. The ${NE.n_dark} dark pixels give 0: an input of 0 cannot blame its weight. The bias has an input of 1, so its slope is the blame itself, ${f5(NE.slope_b)}. 65 multiplications, 65 slopes, teal to turn up, pink to turn down. For this one picture; averaged over all ${n(3823)}, they are the field of pill 08.`,
+      line: `slope = ${f5(NE.blame_z)} × input · pixel ${PX}: ${f5(NE.slopes[PX])} (nudged ${f5(NE.nudged_w21)}) · ${NE.n_dark} dark: 0 · bias: ${f5(NE.slope_b)}` },
+    { dur: 16, title: `This, ${NE.n_neurons} times`, box: S7, yaw: 0,
+      text: `That is the whole neuron. Forward: 64 multiplications, one addition, one squash. Backward: 16 multiplications and an addition for the blame, one more through the squash, 65 for the slopes. The ${NE.n_neurons} neurons of the digit network do exactly this and nothing else, which is how one forward pass and one backward walk give all ${n(NE.n_knobs)} slopes. What remains is to turn the knobs. Pill 11 does it on screen.`,
+      line: `forward: 64 ×, 64 +, 1 squash · backward: 16 ×, 16 +, 1 ×, 65 × · ${NE.n_neurons} neurons → ${n(NE.n_knobs)} slopes` }
+  ];
+
+  // deterministic resting state at the start of step i
+  function baseState(i) {
+    clearAnims();
+    const dimOn = (lab, on, hot) => state(lab, on ? (hot ? 'on' : 'dim') : '');
+    const vis = (tb, on, hot, color) => { if (tb.set) tb.set(1); tb.visible = on; tb.material.color.setHex(hot ? color : C.dim); tb.material.emissive.setHex(hot ? color : C.dim); };
+    const frameOn = (f, on, hot, color) => { f.visible = on; f.material.color.setHex(hot ? color : C.dim); };
+    for (const k of ['hx', 'hw', 'hp', 'hn', 'hr', 'ho']) dimOn(tl[k], true, i === 0);
+    dimOn(tl.op1, true, i <= 1); dimOn(tl.op2, true, i <= 1);
+    Gx.cellsState(i >= 1 ? (i === 1 ? 'on' : 'dim') : ''); Gw.cellsState(i >= 1 ? (i === 1 ? 'on' : 'dim') : ''); Gp.cellsState(i >= 1 ? (i === 1 ? 'on' : 'dim') : '');
+    Gp.tiles.forEach((t, k) => { t.scale.setScalar(1); if (i >= 1) paintProd(k); else unpaint(t); });
+    frameOn(F.x21, i >= 1, i === 1, C.knob); frameOn(F.w21, i >= 1, i === 1, C.knob); frameOn(F.p21, i >= 1, i === 1, C.knob); frameOn(F.xB, i >= 1, i === 1, C.signal); frameOn(F.wB, i >= 1, i === 1, C.signal); frameOn(F.pB, i >= 1, i === 1, C.signal);
+    dimOn(tl.t21, i >= 1, i === 1); dimOn(tl.tB, i >= 1, i === 1); dimOn(tl.tdark, i >= 1, i === 1);
+    T.sum.forEach(t => vis(t, i >= 2, i === 2, C.signal)); setBody(i >= 2); body.scale.setScalar(1); dimOn(tl.tz, i >= 2, i === 2);
+    vis(T.bias, true, i === 0 || i === 2, C.knob); biasRing.material.color.setHex(i === 0 || i === 2 ? C.knob : C.dim); biasRing.material.emissive.copy(biasRing.material.color); biasRing.scale.setScalar(1); dimOn(tl.hb, true, i === 0 || i === 2);
+    vis(T.out, true, i === 0 || i === 3, C.output); PT.show(1); S.curve.material.color.setHex(i === 0 || i === 3 ? C.signal : C.dim); S.curve.geometry.setDrawRange(0, 121);
+    for (const L of [PT.xName, PT.yName]) state(L, i === 0 || i === 3 ? 'on' : 'dim');
+    tanAt(1); S.tan.visible = i >= 3; S.tan.material.color.setHex(i === 3 ? C.knob : C.dim); dotT.visible = i >= 3; dotT.material.color.setHex(i === 3 ? C.knob : C.dim); dotT.material.emissive.copy(dotT.material.color); dotT.scale.setScalar(1);
+    dimOn(tl.ttan, i >= 3, i === 3); dimOn(tl.tsq, true, i === 0 || i === 3); dimOn(tl.tout, i >= 3, i === 3);
+    outNode.material.emissiveIntensity = i >= 3 ? 1.0 : 0.3; outNode.material.color.setHex(i === 3 || i === 0 ? C.output : i >= 4 ? C.dim : C.output); outNode.material.emissive.copy(outNode.material.color); outNode.scale.setScalar(1);
+    T.f16.forEach((t, k) => { vis(t, i >= 3, i === 3 || i === 4, C.signal); if (i === 4) { t.material.color.setHex(NE.back_terms[k] < 0 ? C.output : C.bad); t.material.emissive.copy(t.material.color); } });
+    R2.forEach((m, k) => { m.scale.setScalar(1); if (i >= 4) colNode(m, NE.g2[k], g2max); else resetNode(m); });
+    PB.show(i >= 4 ? 1 : 0); if (PB.g.visible) state(PB.xName, i === 4 ? 'on' : 'dim');
+    bars.forEach(b => { if (i >= 4) { setBar(b, 1); b.material.color.setHex(i === 4 ? (b.userData.v > 0 ? C.bad : C.output) : C.dim); b.material.emissive.copy(b.material.color); } else b.visible = false; });
+    for (const k of ['tin', 'tback', 'tbl', 'tsum16', 'tbig']) dimOn(tl[k], i >= 4, i === 4);
+    vis(T.down, i >= 5, i === 5, C.bad); vis(T.left, i >= 5, i === 5, C.bad); leftHead.visible = i >= 5; leftHead.material.color.setHex(i === 5 ? C.bad : C.dim); leftHead.material.emissive.copy(leftHead.material.color);
+    Gs.tiles.forEach(t => { t.visible = i >= 5; t.scale.setScalar(1); }); Gs.cellsState(i >= 5 ? (i === 5 ? 'on' : 'dim') : ''); biasTile.visible = i >= 5; biasTile.scale.setScalar(1); state(biasCell, i >= 5 ? (i === 5 ? 'on' : 'dim') : '');
+    frameOn(F.s21, i >= 5, i === 5, C.knob); for (const k of ['hs', 'hbias', 'tbias', 't21s', 'tdarks', 'tarrow']) dimOn(tl[k], i >= 5, i === 5);
+    vis(T.fwd, i >= 6, i === 6, C.output); vis(T.bwd, i >= 6, i === 6, C.bad); fwdHead.visible = i >= 6; bwdHead.visible = i >= 6; dimOn(tl.fwd, i >= 6, i === 6); dimOn(tl.bwd, i >= 6, i === 6);
+  }
+
+  const enter = [
+    () => { for (const k of ['hx', 'hw', 'hp', 'hn', 'hr', 'ho', 'op1', 'op2', 'hb', 'tsq']) state(tl[k], ''); for (const L of [PT.xName, PT.yName]) state(L, '');
+      on(tl.hx, 0.8); Gx.tiles.forEach((t, k) => pulse(t, 0.5, 1.0 + 0.01 * k)); on(tl.op1, 2.2); on(tl.hw, 2.6); Gw.tiles.forEach((t, k) => pulse(t, 0.5, 2.8 + 0.01 * k)); on(tl.op2, 4.0); on(tl.hp, 4.4);
+      later(() => { pulse(body, 0.9, 0); state(tl.hn, 'on'); }, 6.0); later(() => { pulse(biasRing, 0.8, 0); state(tl.hb, 'on'); }, 7.4); later(() => { state(PT.xName, 'on'); state(PT.yName, 'on'); state(tl.tsq, 'on'); }, 8.8);
+      later(() => { pulse(outNode, 0.9, 0); state(tl.ho, 'on'); }, 10.4); later(() => { R2.forEach((m, k) => pulse(m, 0.6, 0.05 * k)); state(tl.hr, 'on'); }, 12.0); },
+    () => { Gx.cellsState(''); Gw.cellsState(''); Gp.cellsState(''); Gp.tiles.forEach(unpaint); for (const f of Object.values(F)) f.visible = false; for (const k of ['t21', 'tB', 'tdark']) state(tl[k], '');
+      later(() => Gx.cellsState('on'), 0.6); later(() => Gw.cellsState('on'), 1.8);
+      Gp.tiles.forEach((t, k) => anim(a => { paintProd(k, a); if (a > 0.5) state(Gp.cells[k], 'on'); }, 0.5, 3.0 + 0.05 * k));
+      later(() => { for (const f of [F.x21, F.w21, F.p21]) { f.visible = true; pulse(f, 0.7, 0); } state(tl.t21, 'on'); }, 6.8);
+      later(() => { for (const f of [F.xB, F.wB, F.pB]) { f.visible = true; pulse(f, 0.7, 0); } state(tl.tB, 'on'); }, 10.0); on(tl.tdark, 13.0); },
+    () => { T.sum.forEach(t => { t.visible = false; }); setBody(false); state(tl.tz, ''); state(tl.hb, 'dim'); T.bias.visible = false; biasRing.material.color.setHex(C.dim); biasRing.material.emissive.setHex(C.dim);
+      growAll(T.sum, 0.7, 0.6, 0.03); anim(t => setBody(true, t), 1.2, 3.0); later(() => pulse(body, 0.9, 0), 3.0);
+      later(() => { biasRing.material.color.setHex(C.knob); biasRing.material.emissive.setHex(C.knob); pulse(biasRing, 0.8, 0); state(tl.hb, 'on'); }, 5.0); growT(T.bias, 0.8, 5.6); later(() => { pulse(body, 0.9, 0); state(tl.tz, 'on'); }, 7.0); },
+    () => { S.tan.visible = false; dotT.visible = false; for (const k of ['ttan', 'tout']) state(tl[k], ''); T.f16.forEach(t => { t.visible = false; }); outNode.material.emissiveIntensity = 0.3;
+      later(() => { dotT.visible = true; }, 0.8); anim(t => { const z = lerp(-3, NE.z, t); dotT.position.set(PT.px(z), PT.py(Math.tanh(z)), 0.05); }, 2.2, 0.8, easeInOut); anim(t => tanAt(t), 0.9, 3.4); on(tl.ttan, 4.2);
+      later(() => { pulse(T.out, 0.8, 0); }, 5.6); later(() => { outNode.material.emissiveIntensity = 1.0; pulse(outNode, 0.9, 0); state(tl.tout, 'on'); }, 6.4); growAll(T.f16, 0.8, 8.0, 0.08); later(() => R2.forEach((m, k) => pulse(m, 0.6, 0.05 * k)), 9.4); },
+    () => { R2.forEach(resetNode); T.f16.forEach(t => { t.material.color.setHex(C.dim); t.material.emissive.setHex(C.dim); }); PB.show(0); bars.forEach(b => { b.visible = false; }); for (const k of ['tin', 'tback', 'tbl', 'tsum16', 'tbig']) state(tl[k], '');
+      R2.forEach((m, k) => later(() => { colNode(m, NE.g2[k], g2max); pulse(m, 0.6, 0); const t = T.f16[k]; t.material.color.setHex(NE.back_terms[k] < 0 ? C.output : C.bad); t.material.emissive.copy(t.material.color); }, 0.8 + 0.12 * k));
+      anim(a => PB.show(a), 0.8, 3.2); bars.forEach((b, k) => anim(t => setBar(b, t), 0.5, 4.0 + 0.15 * k)); on(tl.tbig, 7.0); on(tl.tsum16, 8.4);
+      later(() => { pulse(outNode, 0.9, 0); state(tl.tin, 'on'); }, 10.0); later(() => { pulse(dotT, 0.9, 0); state(tl.tback, 'on'); }, 12.4); later(() => { pulse(body, 0.9, 0); state(tl.tbl, 'on'); }, 14.6); },
+    () => { T.down.visible = false; T.left.visible = false; leftHead.visible = false; Gs.tiles.forEach(t => { t.visible = false; }); Gs.cellsState(''); biasTile.visible = false; state(biasCell, ''); F.s21.visible = false; for (const k of ['hs', 'hbias', 'tbias', 't21s', 'tdarks', 'tarrow']) state(tl[k], '');
+      growT(T.down, 0.9, 0.5); growT(T.left, 1.4, 1.4); later(() => { leftHead.visible = true; }, 2.8); on(tl.tarrow, 3.0); on(tl.hs, 3.6);
+      Gs.tiles.forEach((t, k) => pop(t, 0.4, 4.0 + 0.03 * k)); later(() => Gs.cellsState('on'), 6.2); later(() => { F.s21.visible = true; pulse(F.s21, 0.7, 0); state(tl.t21s, 'on'); }, 7.0);
+      on(tl.hbias, 10.0); pop(biasTile, 0.5, 10.2); later(() => { state(biasCell, 'on'); state(tl.tbias, 'on'); }, 10.8); on(tl.tdarks, 13.2); },
+    () => { T.fwd.visible = false; T.bwd.visible = false; fwdHead.visible = false; bwdHead.visible = false; state(tl.fwd, ''); state(tl.bwd, '');
+      growT(T.fwd, 2.0, 0.8); later(() => { fwdHead.visible = true; state(tl.fwd, 'on'); }, 2.8); growT(T.bwd, 2.0, 5.0); later(() => { bwdHead.visible = true; state(tl.bwd, 'on'); }, 7.0); }
+  ];
+
+  // ---------- ledger ----------
+  const ledgerEl = document.getElementById('ledger');
+  function renderLedger(i) {
+    ledgerEl.innerHTML = '<div class="ln title">the calculation so far</div>';
+    for (let k = 0; k <= i; k++) { if (!steps[k].line) continue; const d = document.createElement('div'); d.className = 'ln' + (k === i ? ' now' : ''); d.innerHTML = steps[k].line; ledgerEl.appendChild(d); }
+  }
+
+  // ---------- camera ----------
+
+  K.run({ steps, enter, baseState, ledger: renderLedger });
+})();

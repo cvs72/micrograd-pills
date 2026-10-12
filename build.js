@@ -20,13 +20,16 @@ const PILLS = [
 ];
 // What every pill shares around its stage: Open Graph tags, the <main> landmark, the live step text, the <noscript>
 // message and the footer with the links to the index and the neighbouring pills (shown when it takes keyboard focus).
+// The import map is the one inline script left; the policy admits it by its hash.
+const IMPORTMAP = '{"imports":{"three":"../vendor/three/three.module.js"}}';
+const csp = `default-src 'self'; script-src 'self' 'sha256-${require("crypto").createHash("sha256").update(IMPORTMAP).digest("base64")}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'`;
 const frame = (page, slug) => {
   const i = PILLS.findIndex(p => p[0] === slug), href = j => `${PILLS[j][0]}.html`;
   const title = page.match(/<title>([^<]*)<\/title>/)[1], desc = page.match(/<meta name="description" content="([^"]*)">/)[1];
   const link = (j, text) => j >= 0 && j < PILLS.length ? `<a href="${href(j)}">${text}</a>` : "";
   const footer = `<footer id="pillnav"><a href="../index.html">All pills</a>${link(i - 1, "◀ Previous pill")}${link(i + 1, "Next pill ▶")}</footer>`;
   return page
-    .replace(/(<meta name="description"[^>]*>\n)/, `$1<meta property="og:title" content="${title}">\n<meta property="og:description" content="${desc}">\n<meta property="og:type" content="website">\n`)
+    .replace(/(<meta name="description"[^>]*>\n)/, `<meta http-equiv="Content-Security-Policy" content="${csp}">\n$1<meta property="og:title" content="${title}">\n<meta property="og:description" content="${desc}">\n<meta property="og:type" content="website">\n`)
     .replace('<div id="stage"></div>', "<main>\n<div id=\"stage\"></div>")
     .replace(/(<\/div>\n)(\n<script type="importmap">)/, "$1</main>\n<noscript><p id=\"noscript\">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>\n" + footer + "\n$2")
     .replace('<p id="text">', '<p id="text" aria-live="polite">');
@@ -48,6 +51,9 @@ for (const [slug, fills] of PILLS) {
   if (left) { console.log(`${slug}: ${left[0]} left unfilled`); bad++; }
   const m = page.match(/<script type="module">\n([\s\S]*)<\/script>\s*(?:<\/body>\s*<\/html>\s*)?$/);
   try { new Function(m[1]); } catch (e) { console.log(`${slug}: SYNTAX ${e.message}`); bad++; }
+  if (!page.includes(`<script type="importmap">${IMPORTMAP}</script>`)) { console.log(`${slug}: import map differs`); bad++; }
+  fs.writeFileSync(`site/pills/${slug}.js`, m[1]);
+  page = page.replace(m[0], `<script type="module" src="${slug}.js"></script>\n</body>\n</html>\n`);
   fs.writeFileSync(`site/pills/${slug}.html`, page);
   console.log(`${slug}: ${page.length} bytes`);
 }

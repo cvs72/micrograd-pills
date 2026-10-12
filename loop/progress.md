@@ -39,3 +39,7 @@ Imperfect: the per-pill option mirrors a race in the baseline rather than a prin
 K05: `build.js` now wraps every pill (function `frame`): Open Graph title/description/type from the page's own title and description, `<main>` around stage..deck, `aria-live="polite"` on `#text`, a `<noscript>` message, and a footer linking to the index and the previous/next pill. kit CSS: `main {display: contents}`, noscript and footer rules; button focus styles untouched.
 Verified: node build.js, html-validate clean, `pages.mjs a11y nav links skeleton local kit three` ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.31%).
 Imperfect: the footer is visually hidden until a link takes keyboard focus (a visible line would change every capture); site/index.html has no Open Graph tags yet.
+K06: build.js now adds the Content-Security-Policy meta to every pill (index edited directly) and writes each pill's script to site/pills/NN-slug.js, leaving `<script type="module" src>` in the page. No external links exist, so no noopener was needed.
+The inline import map is admitted by its sha256 in script-src (computed in build.js; Chrome has no external import maps); no 'unsafe-inline' for scripts.
+Verified: node build.js, html-validate clean, pages.mjs csp local links skeleton kit three a11y nav ok, shots + compare.mjs: 83 images, 12 dumps, 0 problems (worst 0.31%).
+Imperfect: the policy string differs from the plan's by that one hash; I did not read the browser console directly, only saw that the captures match (so the scripts run under the policy).
