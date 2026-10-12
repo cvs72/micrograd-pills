@@ -1,4 +1,4 @@
-# Objective check failed after iteration 1 (fix these first; the ticked row stays ticked only if you make them pass)
+# Objective check failed after iteration 2 (fix these first; the ticked row stays ticked only if you make them pass)
 CAPTURE REPORTED ERRORS (see loop/logs/shots.txt)
 MISSING 01-the-map-01.png: no capture (page broken or a step vanished)
 MISSING 01-the-map-02.png: no capture (page broken or a step vanished)
