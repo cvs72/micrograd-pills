@@ -27,9 +27,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 05: inside one neuron of the trained digit network, just before the squash, the total is a straight line in any one
 input. The weight on a wire is the slope of that line, the bias is its lift, and a network of lines with no squash is
 still one line. Every number on screen is recomputed from the real weights in digits/net.json. */

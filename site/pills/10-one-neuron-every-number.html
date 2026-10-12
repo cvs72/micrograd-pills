@@ -33,9 +33,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 10: one neuron of the digit network with nothing hidden. First-row neuron 10 at the random start, reading
 the 7: 64 inputs times 64 weights, the sum and the bias, the squash, then the blame coming back and the slope of
 all 65 knobs. Every number comes from digits/neuron.json, produced by a numpy script next to the training script. */

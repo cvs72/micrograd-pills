@@ -53,9 +53,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Left: a bracketed vertical list of cards, one colour per level, with the item we zoom out to on its left.
 Right: the onion. Each step the list we were in fuses: its cards slide together, their text fades, the blob morphs into a filled disc
 and glides onto the onion, where every disc shares the same bottom edge so each layer keeps a crescent at the top for its title.

@@ -31,9 +31,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 04: one weight of the trained digit network is turned by hand and the score for the misread 7 moves with it.
 The record of that turning is a curve, and the curve is what "a function" means for the rest of the series.
 Every number on screen is recomputed from the real weights in digits/net.json. */

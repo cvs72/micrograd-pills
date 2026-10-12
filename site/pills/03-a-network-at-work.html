@@ -37,9 +37,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 03: a real, trained 64 → 32 → 16 → 10 network reads handwritten digits. The picture on the left becomes 64 numbers,
 light travels along every wire (brighter where input × weight is bigger), the neurons add, bias and squash, ten scores come out.
 Every weight and every score on screen comes from digits/train.py. Column heights are proportional to their counts. */

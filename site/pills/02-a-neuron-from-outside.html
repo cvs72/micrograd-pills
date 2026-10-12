@@ -47,9 +47,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 02 opens on the finished onion of pill 01, greys every layer except neural networks, goes inside it to a small network,
 then into one neuron and walks through its recipe without numbers, then back out to the network. Stage above, deck below. */
 (function () {

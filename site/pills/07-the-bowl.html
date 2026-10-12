@@ -27,9 +27,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 07: how wrong the network is, as one number (the loss), for one picture and for all 3,823 training pictures.
 Against one knob the loss of the whole set is a bowl; against two knobs it is a bowl surface. Every number on screen
 comes from digits/net.json and digits/loss.json, both produced by numpy scripts next to the training script. */

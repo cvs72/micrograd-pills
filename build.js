@@ -32,7 +32,7 @@ for (const [slug, fills] of PILLS) {
   }
   const left = page.match(/__[A-Z]+__/);
   if (left) { console.log(`${slug}: ${left[0]} left unfilled`); bad++; }
-  const m = page.match(/<script>\n([\s\S]*)<\/script>\s*(?:<\/body>\s*<\/html>\s*)?$/);
+  const m = page.match(/<script type="module">\n([\s\S]*)<\/script>\s*(?:<\/body>\s*<\/html>\s*)?$/);
   try { new Function(m[1]); } catch (e) { console.log(`${slug}: SYNTAX ${e.message}`); bad++; }
   fs.writeFileSync(`site/pills/${slug}.html`, page);
   console.log(`${slug}: ${page.length} bytes`);

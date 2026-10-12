@@ -1,6 +1,8 @@
 // The shared kit of the knowledge pills: renderer, camera, labels, panels, tween engine and player.
 // A pill calls Pill.create(options) once, takes what it uses from the object it returns, builds its scene,
 // and ends with K.run({ steps, enter, baseState, ledger }). Options default to the look of most pills.
+import * as THREE from 'three';
+window.THREE = THREE;
 window.addEventListener('error', e => { document.title = 'ERR ' + e.message + ' @' + e.lineno + ':' + e.colno; });
 window.Pill = {
   create(options) {
@@ -10,7 +12,10 @@ window.Pill = {
 
     // ---------- scene ----------
     const stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), deck = document.getElementById('deck');
+    // r128 look: colours are not converted, output is written as it is, and light intensities are not physical (hence the PI)
+    THREE.ColorManagement.enabled = false;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     stage.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
@@ -20,8 +25,8 @@ window.Pill = {
     const camera = new THREE.PerspectiveCamera(VFOV, 1, o.near, o.far);
     const camTarget = new THREE.Vector3(...o.target), camGoal = new THREE.Vector3(...o.target);
     let camRadius = o.radius, camRadiusGoal = o.radius, camYaw = 0, camYawGoal = 0, camElev = o.elev, camElevGoal = o.elev;
-    scene.add(new THREE.AmbientLight(0x9aa6cc, o.ambient));
-    const key = new THREE.DirectionalLight(0xffffff, o.key); key.position.set(-6, 12, 14); scene.add(key);
+    scene.add(new THREE.AmbientLight(0x9aa6cc, o.ambient * Math.PI));
+    const key = new THREE.DirectionalLight(0xffffff, o.key * Math.PI); key.position.set(-6, 12, 14); scene.add(key);
     const grid = new THREE.GridHelper(o.grid[0], o.grid[1], 0x1c2544, 0x151d38); grid.position.set(o.grid[2], o.grid[3], -20); scene.add(grid);
     const glowMat = color => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0, roughness: o.roughness, metalness: 0.1, transparent: true, opacity: 1, side: THREE.DoubleSide });
     const lineMat = (color, op) => new THREE.LineBasicMaterial({ color, transparent: true, opacity: op });

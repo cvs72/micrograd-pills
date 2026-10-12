@@ -27,9 +27,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 08: reading the downhill from the numbers alone. The digit network at its random start; one knob nudged and the
 change in loss divided by the nudge; the nudge shrunk until the ratio settles: the slope. Then the slope of a weight is
 its input, and the field of all 2,778 slopes at the start and after training. Every number comes from digits/net.json

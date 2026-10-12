@@ -27,9 +27,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 06: the squash, the last step of a neuron. tanh is an S, ReLU is a hinge, both bend the straight line of the
 previous pill, and one real weight of the trained digit network shows what the bend buys: a score that goes up, then
 down, which no stack of lines can do. Every number on screen is recomputed from the real weights in digits/net.json. */

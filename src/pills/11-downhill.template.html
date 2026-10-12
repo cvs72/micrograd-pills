@@ -27,9 +27,9 @@
   </div>
 </div>
 
-<script src="../vendor/three/three.min.js"></script>
-<script src="../kit/pill.js"></script>
-<script>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module" src="../kit/pill.js"></script>
+<script type="module">
 /* Pill 11: training the digit network on screen. The rule new = old − step × slope applied to all 2,778 knobs,
 the step size, batches of 32 pictures, the loss falling and the accuracy rising over 60 passes, the knobs
 settling, and what the first-row weights became. Every number comes from digits/descent.json: train.py's run
