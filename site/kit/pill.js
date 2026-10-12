@@ -139,8 +139,7 @@ window.Pill = {
       // the stage is everything above the deck (and below its own offset); the deck's height changes with the text, so re-measure on every step and resize
       function layout() {
         const h = Math.max(160, window.innerHeight - deck.offsetHeight - stage.offsetTop);
-        stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';
-        const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+        stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';        const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
         if (curBox) camRadiusGoal = fitRadius(curBox);
       }
       window.addEventListener('resize', layout);
