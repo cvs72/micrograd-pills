@@ -3,12 +3,13 @@
 // Also dumps every text the viewer can read per step (the content fingerprint) and any console or page error.
 // Speed: while the clock runs, WebGL draw calls are skipped (the page's own logic, tweens, camera and labels still
 // run every frame); one real frame is drawn right before each screenshot. Pills are captured a few at a time.
-// usage: node loop/tools/shots.mjs <outDir> [pill-slug ...]      env: SHOTS_NO_SANDBOX=1, SHOTS_WORKERS=4
+// usage: node loop/tools/shots.mjs <outDir> [pill-slug ...]      env: SHOTS_WORKERS=4, SHOTS_MULTI=1 (multi-process Chromium)
 import { chromium } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
+process.env.TMPDIR = path.resolve('.tmp'); fs.mkdirSync(process.env.TMPDIR, { recursive: true });  // browser temp files stay inside the project (sandbox)
 const out = process.argv[2];
 const only = process.argv.slice(3);
 if (!out) { console.log('usage: node loop/tools/shots.mjs <outDir> [slug ...]'); process.exit(2); }
@@ -51,7 +52,8 @@ const skipDraws = () => {
 const pills = fs.readdirSync(path.join(SITE, 'pills')).filter(f => f.endsWith('.html')).map(f => f.slice(0, -5))
   .filter(s => !only.length || only.includes(s)).sort();
 fs.mkdirSync(out, { recursive: true });
-const browser = await chromium.launch(process.env.SHOTS_NO_SANDBOX ? { args: ['--no-sandbox'] } : {});
+// single-process: inside the OS sandbox Chromium may not register the Mach port its child processes would use
+const browser = await chromium.launch({ args: process.env.SHOTS_MULTI ? [] : ['--single-process', '--no-zygote'] });
 let failed = 0;
 
 async function capture(slug) {
@@ -59,6 +61,16 @@ async function capture(slug) {
   await ctx.addInitScript(skipDraws);
   await ctx.clock.install({ time: 0 });
   await ctx.clock.pauseAt(0);                      // paused before the page loads: time moves only through runFor
+  // the two things the pages fetched from the internet before task K01 are answered from site/vendor/ (same bytes),
+  // so the capture works offline inside the sandbox; after K01 the pages never ask for them (checked by pages.mjs local)
+  await ctx.route('https://fonts.googleapis.com/**', route => {
+    const u = new URL(route.request().url());
+    if (u.pathname === '/css2') return route.fulfill({ path: 'site/vendor/fonts/fonts.css', contentType: 'text/css' });
+    const f = path.join('site/vendor/fonts', path.basename(u.pathname));
+    return fs.existsSync(f) ? route.fulfill({ path: f, contentType: 'font/woff2' }) : route.abort();
+  });
+  await ctx.route('https://cdnjs.cloudflare.com/**', route => route.request().url().endsWith('/three.js/r128/three.min.js')
+    ? route.fulfill({ path: 'site/vendor/three/three.min.js', contentType: 'text/javascript' }) : route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

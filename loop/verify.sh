@@ -10,7 +10,7 @@ tol=$(sed -n 's/^SHOT_TOL: *\([0-9.]*\).*/\1/p' loop/PLAN.md | head -1); tol=${t
 echo "== build"
 node build.js || { echo "BUILD FAILED"; fail=1; }
 echo "== html-validate"
-npx html-validate "site/**/*.html" || { echo "HTML VALIDATION FAILED"; fail=1; }
+./node_modules/.bin/html-validate "site/**/*.html" || { echo "HTML VALIDATION FAILED"; fail=1; }
 echo "== links"
 node loop/tools/pages.mjs links || fail=1
 echo "== checks of the ticked tasks"

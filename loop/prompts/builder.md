@@ -15,7 +15,8 @@ every pill and compares it with `loop/baseline/` (pixels and readable text); a c
    `site/kit/`, `site/vendor/`, `site/index.html`, `build.js`, `README.md`, `.github/`. `site/pills/` is BUILT
    output: edit the sources, then run `node build.js`. Never edit `src/digits/` (the numbers) or anything under `loop/`
    except ticking a row in loop/PLAN.md and appending to loop/progress.md.
-4. Run the checks yourself before ticking: `node build.js`, `npx html-validate "site/**/*.html"`,
+4. Run the checks yourself before ticking: `node build.js`, `./node_modules/.bin/html-validate "site/**/*.html"`
+   (never npx: it has no cache in the sandbox),
    `node loop/tools/pages.mjs <the checks named in the row>`, then
    `node loop/tools/shots.mjs loop/shots && node loop/tools/compare.mjs loop/baseline loop/shots <SHOT_TOL>`.
    Read every failure line and fix it. Open a `loop/shots/diff-*.png` with the Read tool when pixels differ: the

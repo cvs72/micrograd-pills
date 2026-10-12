@@ -11,7 +11,7 @@ export CLAUDE_CONFIG_DIR="$PWD/.claude-home"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 export XDG_CACHE_HOME="$PWD/.cache" TMPDIR="$PWD/.tmp"
 model="${CLAUDE_MODEL:-sonnet}"
-ALLOW="Read,Edit,Write,Bash(node *),Bash(npx html-validate *),Bash(npm run *),Bash(./loop/verify.sh),Bash(loop/verify.sh),Bash(mkdir *),Bash(ls *),Bash(git status),Bash(git status *),Bash(git log *),Bash(git diff),Bash(git diff *),Bash(git show *)"
+ALLOW="Read,Edit,Write,Bash(node *),Bash(./node_modules/.bin/html-validate *),Bash(node_modules/.bin/html-validate *),Bash(./loop/verify.sh),Bash(loop/verify.sh),Bash(mkdir *),Bash(ls *),Bash(git status),Bash(git status *),Bash(git log *),Bash(git diff),Bash(git diff *),Bash(git show *)"
 DENY="Edit(./loop/*.sh),Edit(./loop/prompts/**),Edit(./loop/tools/**),Edit(./loop/baseline/**),Edit(./loop/srt-settings.json),Edit(./loop/feedback.md),Edit(./loop/reviews/**),Edit(./loop/README.md),Edit(./CLAUDE.md),Edit(./design/**),Edit(./reference/**),Edit(./src/digits/**),Edit(./publish-check.sh),Edit(./package.json),Edit(./package-lock.json),Edit(./.htmlvalidate.json),Edit(./pyproject.toml),Edit(./.env*),Edit(./.claude/**),Edit(./node_modules/**),Bash(curl *),Bash(wget *),Bash(npm install *),Bash(npm i *),Bash(npx playwright install *),Bash(git push *),Bash(git commit *),Bash(git checkout *),Bash(git reset *),Bash(rm -r*),Bash(sudo *)"
 case "$role" in
   builder)

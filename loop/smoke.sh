@@ -25,14 +25,15 @@ pass() { echo "PASS  $1"; }
 nope() { echo "FAIL  $1"; bad=1; }
 echo "== toolchain must work inside the sandbox"
 node build.js >/dev/null 2>&1 && pass "node build.js" || nope "node build.js"
-npx html-validate --version >/dev/null 2>&1 && pass "html-validate runs" || nope "html-validate runs"
+./node_modules/.bin/html-validate --version >/dev/null 2>&1 && pass "html-validate runs" || nope "html-validate runs"
 node loop/tools/pages.mjs links >/dev/null 2>&1 && pass "pages.mjs links" || nope "pages.mjs links"
 rm -rf .smoke/shots
 if node loop/tools/shots.mjs .smoke/shots 12-the-names > .smoke/shots.log 2>&1 && [ -f .smoke/shots/12-the-names-07.png ]; then
   pass "headless Chromium captures a pill inside the sandbox"; cp .smoke/shots/12-the-names-07.png .smoke/f.png
-else nope "headless Chromium capture (see .smoke/shots.log; try SHOTS_NO_SANDBOX=1)"; fi
-if [ -d loop/baseline ] && ls loop/baseline/12-the-names-*.png >/dev/null 2>&1; then
-  node loop/tools/compare.mjs loop/baseline .smoke/shots 0.01 2>&1 | grep -v "^MISSING\|^EXTRA" | grep -q "^PIXELS\|^CONTENT\|^SIZE" && nope "capture differs from its own baseline (not deterministic?)" || pass "capture matches the baseline"
+else nope "headless Chromium capture (see .smoke/shots.log)"; fi
+if [ -f .smoke/shots/12-the-names-07.png ] && ls loop/baseline/12-the-names-*.png >/dev/null 2>&1; then
+  mkdir -p .smoke/base && cp loop/baseline/12-the-names-* .smoke/base/
+  node loop/tools/compare.mjs .smoke/base .smoke/shots 0.01 >/dev/null 2>&1 && pass "capture matches the baseline" || nope "capture differs from the baseline (see: node loop/tools/compare.mjs .smoke/base .smoke/shots)"
 fi
 gitleaks version >/dev/null 2>&1 && pass "gitleaks runs" || nope "gitleaks runs"
 echo "== boundary must HOLD (each of these should be blocked)"

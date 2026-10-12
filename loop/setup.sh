@@ -28,7 +28,8 @@ for exe in ("claude", "node", "npm", "npx", "gitleaks", "git", "jq", "rg", "perl
 for c in (os.environ.get("PLAYWRIGHT_BROWSERS_PATH"), f"{home}/Library/Caches/ms-playwright", f"{home}/.cache/ms-playwright"):
     if c and os.path.isdir(c): add(c)
 cfg = {
-  "network": {"allowedDomains": ["api.anthropic.com", "claude.ai", "platform.claude.com"], "deniedDomains": []},
+  "network": {"allowedDomains": ["api.anthropic.com", "claude.ai", "platform.claude.com"], "deniedDomains": [],
+              "allowLocalBinding": True},  # the capture tool serves site/ on a loopback port for headless Chromium
   "filesystem": {
     "denyRead": [home_parent, "./.env"],
     "allowRead": allow,
