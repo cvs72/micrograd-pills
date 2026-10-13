@@ -81,7 +81,15 @@ async function capture(slug, view) {
   await page.goto(`http://127.0.0.1:${port}/pills/${slug}.html`, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
   await ctx.clock.runFor(100);
-  await page.click('#play');                       // pause autoplay; the clock has barely moved
+  // a control that is off-screen or covered is a layout defect at this viewport: say so plainly, then click it anyway so the capture goes on
+  const press = async sel => {
+    const where = await page.evaluate(s => { const el = document.querySelector(s); if (!el) return 'missing'; const r = el.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) return 'hidden'; if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) return `outside the ${innerWidth}x${innerHeight} viewport at ${Math.round(r.left)},${Math.round(r.top)}`;
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return hit && (hit === el || el.contains(hit)) ? '' : 'covered by ' + (hit ? hit.tagName.toLowerCase() + (hit.id ? '#' + hit.id : '') : 'nothing'); }, sel);
+    if (where) { const msg = `${sel} is ${where}`; if (!errors.includes(msg)) errors.push(msg); await page.click(sel, { force: true, timeout: 5000 }).catch(() => {}); }
+    else await page.click(sel, { timeout: 10000 });
+  };
+  await press('#play');                            // pause autoplay; the clock has barely moved
   const n = await page.locator('#dots span').count();
   const shot = async name => {
     await ctx.clock.runFor(SETTLE_MS);               // every tween done, camera settled, nothing drawn yet
@@ -90,11 +98,11 @@ async function capture(slug, view) {
     await page.screenshot({ path: path.join(out, `${slug}${tag}-${name}.png`) });
     await page.evaluate(() => { window.__draw = false; });
   };
-  const toggle = async id => { if (!await page.locator(id).count()) return false; await page.click(id); await ctx.clock.runFor(1000); return true; };
+  const toggle = async id => { if (!await page.locator(id).count()) return false; await press(id); await ctx.clock.runFor(1000); return true; };
   const content = [];
   const wanted = base ? [...Array(n).keys()] : [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
   for (let k = 0; k < n; k++) {
-    if (k > 0) { await page.click('#next'); if (!wanted.includes(k)) { await ctx.clock.runFor(500); continue; } }
+    if (k > 0) { await press('#next'); if (!wanted.includes(k)) { await ctx.clock.runFor(500); continue; } }
     await shot(String(k + 1).padStart(2, '0'));
     if (k === 0) {                                   // the two interface states the reviewer must see
       if (!base && await toggle('#sheet-toggle')) { await shot('01-open'); await toggle('#sheet-toggle'); }

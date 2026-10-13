@@ -34,6 +34,10 @@ content fails the iteration. The scenes themselves (geometry, colours, camera bo
    (`<slug>@390x844-01.png`, `-01-open.png`, `-01-menu.png`, and `@844x390`) and judge them as the viewer would:
    is the animation as large as the width allows, is nothing clipped, is every control reachable, is the text
    readable? Fix what you see. Nothing may be fixed by changing the baseline or the tools.
+   Run every check in the foreground and wait for it (the capture takes several minutes; give the Bash tool a long
+   timeout). Never end your turn while a command is still running, and never tick a row before the capture and the
+   compare have finished and you have looked at the images. A capture line "#play is outside the ... viewport" or
+   "#next is covered by ..." means the layout at that viewport is wrong: fix the layout.
 6. Only when every check of that row passes and the captures look right, change the row's "[ ]" to "[x]" in
    loop/PLAN.md. Never tick a row whose checks you did not run in this iteration. Change nothing else in loop/PLAN.md.
 7. Append 3 to 6 lines to loop/progress.md: what you did, what you verified, what is still imperfect.

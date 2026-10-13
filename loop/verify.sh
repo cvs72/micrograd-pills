@@ -26,8 +26,9 @@ done < <(grep -E '^- \[x\] [A-Z][0-9]+ \|' loop/PLAN.md)
 if [ -n "$(echo "$checks" | trim)" ]; then node loop/tools/pages.mjs $checks || { echo "TASK CHECKS FAILED"; fail=1; }; fi
 if [ "$live" = 1 ]; then echo "== responsive (every page at nine sizes, sheet open, live resize)"; node loop/tools/responsive.mjs > loop/logs/responsive.txt 2>&1 || { echo "RESPONSIVE CHECK FAILED (see loop/logs/responsive.txt)"; grep -v ': checked$' loop/logs/responsive.txt | head -n 40; fail=1; }; fi
 echo "== captures against the baseline (content frozen; pixel tolerance $tol)"
+pkill -f 'loop/tools/shots.mjs' 2>/dev/null; pkill -f 'loop/tools/responsive.mjs' 2>/dev/null; sleep 2   # a capture the builder left running in the background would fight this one for loop/shots and the CPU
 rm -f loop/shots/*
-if node loop/tools/shots.mjs loop/shots > loop/logs/shots.txt 2>&1; then :; else echo "CAPTURE REPORTED ERRORS (see loop/logs/shots.txt)"; tail -n 20 loop/logs/shots.txt; fail=1; fi
+if node loop/tools/shots.mjs loop/shots > loop/logs/shots.txt 2>&1; then :; else echo "CAPTURE REPORTED ERRORS (see loop/logs/shots.txt)"; grep -vE 'steps captured$' loop/logs/shots.txt | head -n 20; fail=1; fi
 node loop/tools/compare.mjs loop/baseline loop/shots "$tol" || { echo "CAPTURES DIFFER FROM THE BASELINE"; fail=1; }
 echo "== publish check"
 PUBLISH_CHECK_SKIP_HISTORY=1 ./publish-check.sh || fail=1
