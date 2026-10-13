@@ -28,7 +28,11 @@ const frame = (page, slug) => {
   const title = page.match(/<title>([^<]*)<\/title>/)[1], desc = page.match(/<meta name="description" content="([^"]*)">/)[1];
   const link = (j, text) => j >= 0 && j < PILLS.length ? `<a href="${href(j)}">${text}</a>` : "";
   const footer = `<footer id="pillnav"><a href="../index.html">All pills</a>${link(i - 1, "◀ Previous pill")}${link(i + 1, "Next pill ▶")}</footer>`;
+  // the deck: the title stays in the bar, the text and the ledger become the sheet the handle opens on narrow viewports
+  const sheetHandle = '<button id="sheet-toggle" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Show the text"><span aria-hidden="true">▲</span></button>';
   return page
+    .replace('<h1 id="title"></h1>\n    <p id="text"></p>\n    <div id="ledger"></div>\n', `<h1 id="title"></h1>\n    ${sheetHandle}\n    <div id="sheet">\n      <p id="text"></p>\n      <div id="ledger"></div>\n    </div>\n`)
+    .replace('<div id="dots" aria-hidden="true"></div>', '<span id="count-bar" aria-hidden="true"></span>\n    <div id="dots" aria-hidden="true"></div>')
     .replace(/(<meta name="description"[^>]*>\n)/, `<meta http-equiv="Content-Security-Policy" content="${csp}">\n$1<meta property="og:title" content="${title}">\n<meta property="og:description" content="${desc}">\n<meta property="og:type" content="website">\n`)
     .replace('<div id="stage"></div>', "<main>\n<div id=\"stage\"></div>")
     .replace(/(<\/div>\n)(\n<script type="importmap">)/, "$1</main>\n<noscript><p id=\"noscript\">This knowledge pill is an animation and needs JavaScript. Please turn it on and reload.</p></noscript>\n" + footer + "\n$2")

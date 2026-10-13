@@ -56,7 +56,38 @@ button:focus-visible { outline: 2px solid var(--knob); outline-offset: 2px; }
   #card { grid-template-columns: minmax(0, 1fr); }
   #ledger { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 6px; min-height: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .lbl { transition: none; } }
+/* the text sheet: below 900 px, or when the viewport is short, the stage is the whole screen and the deck is one bar over it;
+   the handle lifts the text and the ledger over the lower part of the animation. Wide layouts keep the deck below the stage. */
+#sheet { display: contents; }
+#sheet-toggle, #count-bar { display: none; }
+@media (max-width: 899px), (max-height: 560px) {
+  #stage, #labels { top: 0; bottom: 0; height: auto; }
+  #deck { z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 6px 12px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  #card { display: contents; }
+  #title { grid-column: 1; grid-row: 1; font-size: 18px; }
+  #sheet-toggle { display: inline-flex; align-items: center; justify-content: center; grid-column: 2; grid-row: 1; width: 44px; height: 44px; padding: 0; font-size: 16px; }
+  #sheet-toggle span { transition: transform .25s; }
+  .sheet-open #sheet-toggle span { transform: rotate(180deg); }
+  #controls { grid-column: 1 / -1; grid-row: 2; max-width: none; flex-wrap: wrap; gap: 6px 8px; }
+  #controls button { min-width: 44px; min-height: 44px; }
+  #count-bar { display: inline; margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #dots { order: -1; flex: 1 0 100%; min-width: 0; }
+  #sheet { display: block; position: absolute; left: 0; right: 0; bottom: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain;
+           max-height: calc(70vh - var(--bar, 130px)); max-height: calc(70dvh - var(--bar, 130px)); padding: 14px 16px 12px;
+           background: var(--bg2); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; box-shadow: 0 -10px 28px rgba(0, 0, 0, .5);
+           visibility: hidden; opacity: 0; transform: translateY(16px); transition: opacity .25s, transform .25s, visibility 0s .25s; }
+  .sheet-open #sheet { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+  #text { font-size: 16px; line-height: 1.5; max-width: none; margin-bottom: 10px; }
+  #ledger { font-size: 14px; }
+  #eyebrow { z-index: 6; }
+}
+@media (max-height: 560px) and (min-width: 600px) {
+  #deck { grid-template-columns: minmax(0, 1fr) auto auto; }
+  #controls { grid-column: 3; grid-row: 1; flex-wrap: nowrap; }
+  #dots { order: 0; flex: 0 0 90px; min-width: 0; }
+  #count-bar { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .lbl, #sheet, #sheet-toggle span { transition: none; } }
 main { display: contents; }
 #noscript { position: fixed; inset: 40% 16px auto; margin: 0; text-align: center; color: var(--muted); }
 /* the page footer: out of sight until a keyboard user reaches its links, so the stage keeps its whole frame */

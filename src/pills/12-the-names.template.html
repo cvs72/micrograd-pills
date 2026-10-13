@@ -8,8 +8,10 @@
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
 <link rel="stylesheet" href="../kit/pill.css">
 <style>
-  #stage { position: fixed; left: 0; right: 0; top: 42px; height: 60%; }
-  #labels { position: fixed; left: 0; right: 0; top: 42px; height: 60%; pointer-events: none; overflow: hidden; }
+  @media (min-width: 900px) and (min-height: 561px) {
+    #stage { position: fixed; left: 0; right: 0; top: 42px; height: 60%; }
+    #labels { position: fixed; left: 0; right: 0; top: 42px; height: 60%; pointer-events: none; overflow: hidden; }
+  }
   .lbl.dim i { color: var(--muted); }
 </style>
 

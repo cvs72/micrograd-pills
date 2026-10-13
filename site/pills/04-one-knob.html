@@ -25,13 +25,17 @@
 <div id="deck">
   <div id="card">
     <h1 id="title"></h1>
-    <p id="text" aria-live="polite"></p>
-    <div id="ledger"></div>
+    <button id="sheet-toggle" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Show the text"><span aria-hidden="true">▲</span></button>
+    <div id="sheet">
+      <p id="text" aria-live="polite"></p>
+      <div id="ledger"></div>
+    </div>
   </div>
   <div id="controls">
     <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
     <button id="play" type="button" aria-label="Play or pause">Pause</button>
     <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <span id="count-bar" aria-hidden="true"></span>
     <div id="dots" aria-hidden="true"></div>
   </div>
 </div>

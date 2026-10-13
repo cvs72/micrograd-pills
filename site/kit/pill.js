@@ -109,13 +109,16 @@ window.Pill = {
       const steps = r.steps, view = r.view || (s => ({ box: s.box, yaw: s.yaw, elev: s.elev }));
       let step = -1, playing = !reduced, stepStart = 0, curBox = null;
       const countEl = document.getElementById('count'), dotsEl = document.getElementById('dots'), playBtn = document.getElementById('play');
+      const eyebrowEl = document.getElementById('eyebrow'), countBar = document.getElementById('count-bar');
       const titleEl = document.getElementById('title'), textEl = document.getElementById('text');
       steps.forEach(() => { const s = document.createElement('span'); s.appendChild(document.createElement('i')); dotsEl.appendChild(s); });
+      let freeHeight = 0;
       function fitRadius(box) {
         const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight, aspect = w / h;
-        const pad = w < 640 ? o.pad[0] : o.pad[1];
+        const free = freeHeight || h;
+        const pad = w < 640 ? o.pad[1] + 0.06 : o.pad[1];
         const halfW = (box[1] - box[0]) / 2 * pad, halfH = (box[3] - box[2]) / 2 * pad, tanV = Math.tan(VFOV / 2 * Math.PI / 180);
-        return Math.max(halfH / tanV, halfW / (tanV * aspect), o.minRadius);
+        return Math.max(halfH / tanV * (h / free), halfW / (tanV * aspect), o.minRadius);   // free: the part of the canvas the deck bar leaves visible
       }
       function aim(v) { curBox = v.box; camRadiusGoal = fitRadius(v.box); camYawGoal = v.yaw; camElevGoal = v.elev || o.elev; camGoal.set((v.box[0] + v.box[1]) / 2, (v.box[2] + v.box[3]) / 2, v.z || 0); }
       K.aim = aim;
@@ -125,6 +128,7 @@ window.Pill = {
         r.baseState(step);
         titleEl.textContent = steps[step].title; textEl.textContent = steps[step].text; r.ledger(step);
         countEl.textContent = (step + 1) + ' / ' + steps.length;
+        if (countBar) countBar.textContent = countEl.textContent;
         [...dotsEl.children].forEach((d, k) => { d.classList.toggle('done', k < step); d.firstChild.style.width = k === step ? '0%' : ''; });
         layout(); aim(view(steps[step], step, prev < 0 || prev === step - 1));
         if (instant) { camRadius = camRadiusGoal; camYaw = camYawGoal; camElev = camElevGoal; camTarget.copy(camGoal); }
@@ -134,15 +138,46 @@ window.Pill = {
       document.getElementById('next').onclick = () => go(step + 1);
       document.getElementById('prev').onclick = () => go(step - 1);
       playBtn.onclick = () => setPlaying(!playing);
-      window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } });
+      window.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(step + 1); else if (e.key === 'ArrowLeft') go(step - 1); else if (e.key === ' ' && !e.target.closest('button, a')) { e.preventDefault(); setPlaying(!playing); } });
 
       // the stage is everything above the deck (and below its own offset); the deck's height changes with the text, so re-measure on every step and resize
+      // On narrow or short viewports the deck is a bar over a full-screen stage: the camera fits the scene to the part
+      // the eyebrow and the bar leave free, and a view offset centres it there.
+      const sheetMode = window.matchMedia('(max-width: 899px), (max-height: 560px)');
       function layout() {
-        const h = Math.max(160, window.innerHeight - deck.offsetHeight - stage.offsetTop);
-        stage.style.height = h + 'px'; labelsEl.style.height = h + 'px';        const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+        let h, top = 0, bottom = 0;
+        if (sheetMode.matches) {
+          stage.style.height = ''; labelsEl.style.height = ''; h = stage.clientHeight;
+          top = eyebrowEl.getBoundingClientRect().bottom + 2; bottom = deck.offsetHeight;
+          deck.style.setProperty('--bar', bottom + 'px');
+        } else h = Math.max(160, window.innerHeight - deck.offsetHeight - stage.offsetTop);
+        if (!sheetMode.matches) { stage.style.height = h + 'px'; labelsEl.style.height = h + 'px'; }
+        const w = stage.clientWidth; renderer.setSize(w, h, false); camera.aspect = w / h;
+        freeHeight = Math.max(80, h - top - bottom);
+        if (top || bottom) camera.setViewOffset(w, h, 0, (bottom - top) / 2, w, h); else camera.clearViewOffset();
+        camera.updateProjectionMatrix();
         if (curBox) camRadiusGoal = fitRadius(curBox);
       }
-      window.addEventListener('resize', layout);
+      // a resize or rotation re-fits at once: the camera does not travel to its new place
+      window.addEventListener('resize', () => { layout(); if (curBox) camRadius = camRadiusGoal; });
+
+      // the text sheet: open or closed, it never touches the stage, and the state stays across steps
+      const sheetBtn = document.getElementById('sheet-toggle'), sheetEl = document.getElementById('sheet');
+      function setSheet(open) {
+        document.body.classList.toggle('sheet-open', open);
+        if (sheetBtn) { sheetBtn.setAttribute('aria-expanded', String(open)); sheetBtn.setAttribute('aria-label', open ? 'Hide the text' : 'Show the text'); }
+      }
+      if (sheetBtn) {
+        sheetBtn.onclick = () => setSheet(!document.body.classList.contains('sheet-open'));
+        stage.addEventListener('click', () => setSheet(false));
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') setSheet(false); });
+        let y0 = 0;
+        deck.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+        deck.addEventListener('touchend', e => {
+          const dy = e.changedTouches[0].clientY - y0, inSheet = sheetEl.contains(e.target);
+          if (dy > 50 && (!inSheet || sheetEl.scrollTop === 0)) setSheet(false); else if (dy < -50 && !inSheet) setSheet(true);
+        }, { passive: true });
+      }
 
       function place(drift) {
         camera.position.set(camTarget.x + Math.sin(camYaw + drift) * camRadius, camTarget.y + camRadius * camElev, camTarget.z + Math.cos(camYaw + drift) * camRadius);

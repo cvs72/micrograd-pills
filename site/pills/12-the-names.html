@@ -12,8 +12,10 @@
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
 <link rel="stylesheet" href="../kit/pill.css">
 <style>
-  #stage { position: fixed; left: 0; right: 0; top: 42px; height: 60%; }
-  #labels { position: fixed; left: 0; right: 0; top: 42px; height: 60%; pointer-events: none; overflow: hidden; }
+  @media (min-width: 900px) and (min-height: 561px) {
+    #stage { position: fixed; left: 0; right: 0; top: 42px; height: 60%; }
+    #labels { position: fixed; left: 0; right: 0; top: 42px; height: 60%; pointer-events: none; overflow: hidden; }
+  }
   .lbl.dim i { color: var(--muted); }
 </style>
 
@@ -26,13 +28,17 @@
 <div id="deck">
   <div id="card">
     <h1 id="title"></h1>
-    <p id="text" aria-live="polite"></p>
-    <div id="ledger"></div>
+    <button id="sheet-toggle" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Show the text"><span aria-hidden="true">▲</span></button>
+    <div id="sheet">
+      <p id="text" aria-live="polite"></p>
+      <div id="ledger"></div>
+    </div>
   </div>
   <div id="controls">
     <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
     <button id="play" type="button" aria-label="Play or pause">Pause</button>
     <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <span id="count-bar" aria-hidden="true"></span>
     <div id="dots" aria-hidden="true"></div>
   </div>
 </div>

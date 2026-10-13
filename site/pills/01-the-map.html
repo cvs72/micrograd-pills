@@ -19,7 +19,7 @@
     --mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
     color-scheme: dark;
   }
-  .lbl small { display: none; font-size: 10px; font-weight: 400; opacity: .8; margin-top: 1px; }
+  .lbl small { display: none; font-size: 11px; font-weight: 400; opacity: .8; margin-top: 1px; }
   .lbl.sub small { display: block; }
   .lbl.pick { color: var(--ink); font-weight: 700; }
   .lbl.pick small { color: var(--ink); opacity: .75; }
@@ -47,13 +47,17 @@
 <div id="deck">
   <div id="card">
     <h1 id="title"></h1>
-    <p id="text" aria-live="polite"></p>
-    <div id="ledger"></div>
+    <button id="sheet-toggle" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Show the text"><span aria-hidden="true">▲</span></button>
+    <div id="sheet">
+      <p id="text" aria-live="polite"></p>
+      <div id="ledger"></div>
+    </div>
   </div>
   <div id="controls">
     <button id="prev" type="button" aria-label="Previous step">◀ Back</button>
     <button id="play" type="button" aria-label="Play or pause">Pause</button>
     <button id="next" type="button" aria-label="Next step">Next ▶</button>
+    <span id="count-bar" aria-hidden="true"></span>
     <div id="dots" aria-hidden="true"></div>
   </div>
 </div>
