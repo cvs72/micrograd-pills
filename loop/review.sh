@@ -10,7 +10,7 @@ mkdir -p loop/reviews/notes loop/logs; touch loop/reviews/rejects.txt loop/revie
 while IFS='|' read -r head key desc; do
   id=$(echo "$head" | awk '{print $NF}')
   grep -q "^$id\$" loop/reviews/passed.txt || echo "$id | $(printf '%s' "$key" | trim) | $(printf '%s' "$desc" | trim | cut -c1-300)" >> loop/reviews/queue.txt
-done < <(grep -E '^- \[x\] K[0-9]+ \|' loop/PLAN.md)
+done < <(grep -E '^- \[x\] [A-Z][0-9]+ \|' loop/PLAN.md)
 [ -s loop/reviews/queue.txt ] || { echo "nothing new to review"; echo "REVIEW_COST=0"; exit 0; }
 git diff HEAD~1 --stat > loop/reviews/diff-stat.txt 2>/dev/null || true
 git diff HEAD~1 -- src site build.js README.md .github > loop/reviews/diff.patch 2>/dev/null || true

@@ -1,17 +1,21 @@
-// Compares a capture with the baseline: pixels per step (pixelmatch) and the readable content per step (exact).
-// usage: node loop/tools/compare.mjs <baselineDir> <shotsDir> [maxMismatchRatio=0.01]
-// Writes <shotsDir>/diff-<name>.png for every image over the limit. Exit 1 on any failure.
+// Compares a capture with the baseline. The readable content per step (titles, texts, ledger, eyebrow, labels) must
+// be identical: content is frozen. Pixels are compared per step at the baseline viewport (pixelmatch): with a
+// tolerance they must stay within it; with "none" the differences are only reported (a design pass changes pixels
+// on purpose and the reviewer judges the captures). Page errors and missing captures always fail.
+// usage: node loop/tools/compare.mjs <baselineDir> <shotsDir> [maxMismatchRatio=0.01 | none]
+// Writes <shotsDir>/diff-<name>.png for every image over the limit (or, with "none", over 1%, for the reviewer).
 import fs from 'node:fs';
 import path from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
 const [base, shots, tolArg] = process.argv.slice(2);
-const TOL = Number(tolArg ?? 0.01);
-if (!base || !shots) { console.log('usage: node loop/tools/compare.mjs <baselineDir> <shotsDir> [tolerance]'); process.exit(2); }
+const REPORT = (tolArg ?? '').toLowerCase() === 'none';
+const TOL = REPORT ? 0.01 : Number(tolArg ?? 0.01);
+if (!base || !shots) { console.log('usage: node loop/tools/compare.mjs <baselineDir> <shotsDir> [tolerance|none]'); process.exit(2); }
 const pngs = fs.readdirSync(base).filter(f => f.endsWith('.png')).sort();
 const jsons = fs.readdirSync(base).filter(f => f.endsWith('.json')).sort();
-let bad = 0, worst = 0, worstName = '';
+let bad = 0, worst = 0, worstName = '', changed = 0;
 for (const f of pngs) {
   const want = path.join(shots, f);
   if (!fs.existsSync(want)) { console.log(`MISSING ${f}: no capture (page broken or a step vanished)`); bad++; continue; }
@@ -21,7 +25,11 @@ for (const f of pngs) {
   const n = pixelmatch(a.data, b.data, diff.data, a.width, a.height, { threshold: 0.12 });
   const ratio = n / (a.width * a.height);
   if (ratio > worst) { worst = ratio; worstName = f; }
-  if (ratio > TOL) { bad++; fs.writeFileSync(path.join(shots, `diff-${f}`), PNG.sync.write(diff)); console.log(`PIXELS ${f}: ${(ratio * 100).toFixed(2)}% of pixels differ (limit ${(TOL * 100).toFixed(2)}%), see ${path.join(shots, 'diff-' + f)}`); }
+  if (ratio > TOL) {
+    fs.writeFileSync(path.join(shots, `diff-${f}`), PNG.sync.write(diff));
+    if (REPORT) { changed++; console.log(`CHANGED ${f}: ${(ratio * 100).toFixed(2)}% of pixels differ from the baseline (reported, not judged here), see ${path.join(shots, 'diff-' + f)}`); }
+    else { bad++; console.log(`PIXELS ${f}: ${(ratio * 100).toFixed(2)}% of pixels differ (limit ${(TOL * 100).toFixed(2)}%), see ${path.join(shots, 'diff-' + f)}`); }
+  }
 }
 for (const f of jsons) {
   const want = path.join(shots, f);
@@ -36,7 +44,9 @@ for (const f of jsons) {
     }
   });
 }
-const extra = fs.readdirSync(shots).filter(f => f.endsWith('.png') && !f.startsWith('diff-') && !pngs.includes(f));
+// captures of other viewports and interface states (<slug>@WxH-..., -open, -menu) have no baseline: the reviewer judges them
+const extra = fs.readdirSync(shots).filter(f => /^\d\d-[a-z0-9-]+-\d\d\.png$/.test(f) && !pngs.includes(f));
 if (extra.length) { console.log(`EXTRA captures not in the baseline: ${extra.join(', ')}`); bad++; }
-console.log(`compared ${pngs.length} images and ${jsons.length} content dumps; worst image ${worstName} at ${(worst * 100).toFixed(2)}%; ${bad} problem(s)`);
+const others = fs.readdirSync(shots).filter(f => f.includes('@') && f.endsWith('.png')).length;
+console.log(`compared ${pngs.length} images and ${jsons.length} content dumps; worst image ${worstName} at ${(worst * 100).toFixed(2)}%; ${REPORT ? changed + ' image(s) changed (reported); ' : ''}${others} capture(s) at other viewports for the reviewer; ${bad} problem(s)`);
 process.exit(bad ? 1 : 0);

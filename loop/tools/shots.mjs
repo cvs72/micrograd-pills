@@ -1,6 +1,11 @@
-// Captures every pill at the end of every step, deterministically. Playwright's fake clock drives rAF and timers,
-// so the same page gives the same pixels on the same browser build, and the capture needs no hook in the page.
-// Also dumps every text the viewer can read per step (the content fingerprint) and any console or page error.
+// Captures every pill deterministically. Playwright's fake clock drives rAF and timers, so the same page gives the
+// same pixels on the same browser build, and the capture needs no hook in the page.
+// Viewports come from the VIEWPORTS line of loop/PLAN.md (or SHOTS_VIEWPORTS=390x844,1440x810). The baseline
+// viewport (1440x810) is captured at the end of every step, with the readable content per step (the content
+// fingerprint) and any console or page error: <slug>-NN.png and <slug>.json, the names loop/baseline/ uses.
+// Every other viewport is captured at three steps (first, middle, last): <slug>@WxH-NN.png. At the first step the
+// text sheet, when the page has one (#sheet-toggle), is also captured open (<slug>@WxH-01-open.png), and the menu,
+// when the page has one (#menu-toggle), open (<slug>@WxH-01-menu.png; also at the baseline viewport).
 // Speed: while the clock runs, WebGL draw calls are skipped (the page's own logic, tweens, camera and labels still
 // run every frame); one real frame is drawn right before each screenshot. Pills are captured a few at a time.
 // usage: node loop/tools/shots.mjs <outDir> [pill-slug ...]      env: SHOTS_WORKERS=4, SHOTS_MULTI=1 (multi-process Chromium)
@@ -13,7 +18,11 @@ process.env.TMPDIR = path.resolve('.tmp'); fs.mkdirSync(process.env.TMPDIR, { re
 const out = process.argv[2];
 const only = process.argv.slice(3);
 if (!out) { console.log('usage: node loop/tools/shots.mjs <outDir> [slug ...]'); process.exit(2); }
-const SITE = 'site', VIEW = { width: 1440, height: 810 }, SETTLE_MS = 30000, WORKERS = Number(process.env.SHOTS_WORKERS || 4);
+const SITE = 'site', BASE = '1440x810', SETTLE_MS = 30000, WORKERS = Number(process.env.SHOTS_WORKERS || 4);
+const planLine = fs.existsSync('loop/PLAN.md') ? (fs.readFileSync('loop/PLAN.md', 'utf8').match(/^VIEWPORTS: *([0-9x, ]+)/m) || [])[1] : '';
+const VIEWPORTS = [...new Set((process.env.SHOTS_VIEWPORTS || planLine || BASE).split(',').map(s => s.trim()).filter(Boolean))];
+if (!VIEWPORTS.includes(BASE)) VIEWPORTS.unshift(BASE);  // the baseline viewport is always captured in full
+const size = v => { const [width, height] = v.split('x').map(Number); return { width, height }; };
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
@@ -53,26 +62,17 @@ const pills = fs.readdirSync(path.join(SITE, 'pills')).filter(f => f.endsWith('.
   .filter(s => !only.length || only.includes(s)).sort();
 fs.mkdirSync(out, { recursive: true });
 // single-process: inside the OS sandbox Chromium may not register the Mach port its child processes would use;
-// in that mode a browser serves one context reliably, so every pill gets its own browser (launch is cheap)
+// in that mode a browser serves one context reliably, so every capture gets its own browser (launch is cheap)
 const launch = () => chromium.launch({ args: process.env.SHOTS_MULTI ? [] : ['--single-process', '--no-zygote'] });
 let failed = 0;
 
-async function capture(slug) {
+async function capture(slug, view) {
+  const base = view === BASE, tag = base ? '' : '@' + view;
   const browser = await launch();
-  const ctx = await browser.newContext({ viewport: VIEW, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport: size(view), deviceScaleFactor: 1, hasTouch: !base && size(view).width < 900 });
   await ctx.addInitScript(skipDraws);
   await ctx.clock.install({ time: 0 });
   await ctx.clock.pauseAt(0);                      // paused before the page loads: time moves only through runFor
-  // the two things the pages fetched from the internet before task K01 are answered from site/vendor/ (same bytes),
-  // so the capture works offline inside the sandbox; after K01 the pages never ask for them (checked by pages.mjs local)
-  await ctx.route('https://fonts.googleapis.com/**', route => {
-    const u = new URL(route.request().url());
-    if (u.pathname === '/css2') return route.fulfill({ path: 'site/vendor/fonts/fonts.css', contentType: 'text/css' });
-    const f = path.join('site/vendor/fonts', path.basename(u.pathname));
-    return fs.existsSync(f) ? route.fulfill({ path: f, contentType: 'font/woff2' }) : route.abort();
-  });
-  await ctx.route('https://cdnjs.cloudflare.com/**', route => route.request().url().endsWith('/three.js/r128/three.min.js')
-    ? route.fulfill({ path: 'site/vendor/three/three.min.js', contentType: 'text/javascript' }) : route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -80,17 +80,27 @@ async function capture(slug) {
   page.on('requestfailed', r => errors.push('request failed: ' + r.url()));
   await page.goto(`http://127.0.0.1:${port}/pills/${slug}.html`, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
-  await page.click('#play');                       // pause autoplay; the clock has not moved yet
+  await ctx.clock.runFor(100);
+  await page.click('#play');                       // pause autoplay; the clock has barely moved
   const n = await page.locator('#dots span').count();
-  const content = [];
-  for (let k = 0; k < n; k++) {
-    if (k > 0) await page.click('#next');
+  const shot = async name => {
     await ctx.clock.runFor(SETTLE_MS);               // every tween done, camera settled, nothing drawn yet
     await page.evaluate(() => { window.__draw = true; });
     await ctx.clock.runFor(40);                      // one real frame
-    await page.screenshot({ path: path.join(out, `${slug}-${String(k + 1).padStart(2, '0')}.png`) });
+    await page.screenshot({ path: path.join(out, `${slug}${tag}-${name}.png`) });
     await page.evaluate(() => { window.__draw = false; });
-    content.push(await page.evaluate(() => ({
+  };
+  const toggle = async id => { if (!await page.locator(id).count()) return false; await page.click(id); await ctx.clock.runFor(1000); return true; };
+  const content = [];
+  const wanted = base ? [...Array(n).keys()] : [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
+  for (let k = 0; k < n; k++) {
+    if (k > 0) { await page.click('#next'); if (!wanted.includes(k)) { await ctx.clock.runFor(500); continue; } }
+    await shot(String(k + 1).padStart(2, '0'));
+    if (k === 0) {                                   // the two interface states the reviewer must see
+      if (!base && await toggle('#sheet-toggle')) { await shot('01-open'); await toggle('#sheet-toggle'); }
+      if (await toggle('#menu-toggle')) { await shot('01-menu'); await page.keyboard.press('Escape'); await ctx.clock.runFor(1000); }
+    }
+    if (base) content.push(await page.evaluate(() => ({
       title: document.querySelector('#title').textContent,
       text: document.querySelector('#text').textContent,
       ledger: document.querySelector('#ledger').innerText,
@@ -98,13 +108,14 @@ async function capture(slug) {
       labels: [...document.querySelectorAll('.lbl.on')].map(e => e.innerText).sort(),
     })));
   }
-  fs.writeFileSync(path.join(out, `${slug}.json`), JSON.stringify({ steps: n, pageTitle: await page.title(), content, errors }, null, 1));
-  if (errors.length) { failed++; console.log(`${slug}: ${errors.length} error(s) in the page: ${errors[0]}`); }
-  console.log(`${slug}: ${n} steps captured`);
+  if (base) fs.writeFileSync(path.join(out, `${slug}.json`), JSON.stringify({ steps: n, pageTitle: await page.title(), content, errors }, null, 1));
+  if (errors.length) { failed++; console.log(`${slug}${tag}: ${errors.length} error(s) in the page: ${errors[0]}`); }
+  console.log(`${slug}${tag}: ${base ? n : wanted.length} steps captured`);
   await ctx.close();
   await browser.close();
 }
-const queue = [...pills];
-await Promise.all(Array.from({ length: Math.min(WORKERS, queue.length) }, async () => { while (queue.length) await capture(queue.shift()); }));
+const queue = [];
+for (const v of VIEWPORTS) for (const s of pills) queue.push([s, v]);
+await Promise.all(Array.from({ length: Math.min(WORKERS, queue.length) }, async () => { while (queue.length) { const [s, v] = queue.shift(); try { await capture(s, v); } catch (e) { failed++; console.log(`${s}@${v}: capture failed: ${String(e).split('\n')[0]}`); } } }));
 server.close();
 process.exit(failed ? 1 : 0);

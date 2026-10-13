@@ -61,9 +61,21 @@ BUILDER_TURNS/BUILDER_BUDGET, REVIEWER_TURNS/REVIEWER_BUDGET, SANDBOX_OFF=1 (tes
 
 ## What the gate checks every iteration (`verify.sh`)
 `node build.js` · html-validate on every page · every local link resolves · the static checks of each ticked task
-(`tools/pages.mjs`: local, skeleton, kit, three, a11y, nav, csp, ci) · every pill captured at the end of every step
-with a fake clock (`tools/shots.mjs`, deterministic) and compared with the baseline (`tools/compare.mjs`: pixels
-within SHOT_TOL, readable content identical, no console errors) · `publish-check.sh`.
+(`tools/pages.mjs`: local, skeleton, kit, three, a11y, nav, csp, ci, sheet, menu, footer, fit) · for the phone row,
+`tools/responsive.mjs` (every page at nine sizes, the sheet open, a live resize both ways: no overflow, every control
+on screen and thumb-sized, the stage owning the screen, the canvas the stage's size) · every pill captured with a
+fake clock (`tools/shots.mjs`, deterministic) at the viewports of the plan's VIEWPORTS line (desktop at every step,
+the others at three steps plus the sheet and the menu open) and compared with the baseline (`tools/compare.mjs`:
+readable content identical, no console errors, pixels within SHOT_TOL or, with `SHOT_TOL: none`, reported for the
+reviewer) · `publish-check.sh`.
+
+## Passes
+The loop has run two plans so far, each a `PLAN.md` with its own rows and gate settings:
+- the kit pass (`PLAN-kit.md`, done 2026-10-12): architecture only, pixels frozen at 1440x810, SHOT_TOL 0.01;
+- the design pass (`PLAN.md` now): phone first, the animation owns the screen and the text is a sheet over it, a
+  menu, the credits footer, a deterministic first frame; content frozen, pixels free, SHOT_TOL none, four viewports.
+To start a pass: its plan becomes `loop/PLAN.md`, and `loop/progress.md`, `loop/feedback.md` and `loop/reviews/`
+(passed.txt, rejects.txt, notes/) start empty, on a fresh branch from the previous pass's result.
 
 ## Files agents cannot change (srt denyWrite AND permission deny rules)
 `loop/*.sh`, `loop/prompts/`, `loop/tools/`, `loop/baseline/`, `loop/srt-settings.json`, `loop/feedback.md`,
@@ -72,5 +84,6 @@ within SHOT_TOL, readable content identical, no console errors) · `publish-chec
 `PLAN.md` may only be changed by ticking boxes: any other edit stops the loop (exit 7).
 
 ## After the loop
-Review `git log`, the notes in `loop/reviews/notes/`, and the site with `npm run serve`. Then the design pass that is
-out of scope here: the deck layout for wide screens and the portrait layout for phones.
+Review `git log`, the notes in `loop/reviews/notes/`, and the site with `npm run serve`, on a phone too (same Wi-Fi:
+open http://<your Mac's address>:8765/ in the phone's browser). When the look is approved, re-capture the baseline
+(`node loop/tools/shots.mjs loop/baseline`) so the next pass, the content of Part 2, starts from it.

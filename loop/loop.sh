@@ -34,8 +34,8 @@ wait_for_quota() {
   done
 }
 all_done() {
-  grep -q '^- \[ \] K[0-9]* |' loop/PLAN.md && return 1
-  while read -r id; do grep -q "^$id\$" loop/reviews/passed.txt || return 1; done < <(grep -E '^- \[x\] K[0-9]+ \|' loop/PLAN.md | awk '{print $3}')
+  grep -q '^- \[ \] [A-Z][0-9]* |' loop/PLAN.md && return 1
+  while read -r id; do grep -q "^$id\$" loop/reviews/passed.txt || return 1; done < <(grep -E '^- \[x\] [A-Z][0-9]+ \|' loop/PLAN.md | awk '{print $3}')
   return 0
 }
 i=0
@@ -44,7 +44,7 @@ while [ "$i" -lt "$MAX_ITER" ]; do
   over_budget && { log "budget reached ($spent USD)"; exit 4; }
   i=$((i+1))
   log "iteration $i/$MAX_ITER, spent so far $spent USD"
-  if grep -q '^- \[ \] K[0-9]* |' loop/PLAN.md; then
+  if grep -q '^- \[ \] [A-Z][0-9]* |' loop/PLAN.md; then
     ./loop/sandboxed.sh ./loop/agent.sh builder > "loop/logs/iter-$i.json" 2> "loop/logs/iter-$i.err"; rc=$?
     add_cost "$(jq -r '.total_cost_usd // 0' "loop/logs/iter-$i.json" 2>/dev/null || echo 0)"
     limited=0
@@ -66,7 +66,7 @@ while [ "$i" -lt "$MAX_ITER" ]; do
     add_cost "$(sed -n 's/^REVIEW_COST=//p' "loop/logs/review-$i.txt" | tail -1)"
     if [ "$rrc" -eq 2 ] && ! probe; then commit_all "iteration $i: loop bookkeeping" || true; wait_for_quota; i=$((i-1)); continue; fi
   else
-    { echo "# Objective check failed after iteration $i (fix these first; the ticked row stays ticked only if you make them pass)"; grep -E 'FAILED|DIFFER|PIXELS|CONTENT|MISSING|ERRORS|SIZE|EXTRA|^site/|^src/|^\.github|^loop/PLAN|^README' "loop/logs/verify-$i.txt" | head -n 60; } > loop/feedback.md
+    { echo "# Objective check failed after iteration $i (fix these first; the ticked row stays ticked only if you make them pass)"; grep -E 'FAILED|DIFFER|PIXELS|CONTENT|MISSING|ERRORS|SIZE|EXTRA|^site/|^src/|^index|^pills/|^\.github|^loop/PLAN|^README' "loop/logs/verify-$i.txt" | head -n 60; } > loop/feedback.md
     log "objective checks failed (see loop/logs/verify-$i.txt)"
   fi
   commit_all "iteration $i: loop bookkeeping" || true

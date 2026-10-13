@@ -1,5 +1,5 @@
 // Static checks on the built site, one per task of loop/PLAN.md. Every check prints what is wrong and exits 1.
-// usage: node loop/tools/pages.mjs <check> [<check> ...]    checks: links skeleton local kit three a11y nav csp ci
+// usage: node loop/tools/pages.mjs <check> [<check> ...]    checks: links skeleton local kit three a11y nav csp ci sheet menu footer fit
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -92,6 +92,53 @@ const checks = {
       if (!/object-src 'none'/.test(csp)) fail(f, "CSP needs object-src 'none'");
       if (/<script(?![^>]*\b(src|type="importmap"|type="application\/json"))[^>]*>\s*\S/.test(s)) fail(f, 'inline <script> left (blocked by the CSP): move it to a file');
     }
+  },
+  sheet() {  // on narrow viewports the deck is a sheet over the stage: the handle and its wiring exist in every pill
+    for (const f of pills()) {
+      const s = read(f);
+      if (!/<button[^>]*\bid="sheet-toggle"/.test(s)) fail(f, 'needs <button id="sheet-toggle"> (the handle of the text sheet)');
+      if (!/id="sheet-toggle"[^>]*aria-expanded=|aria-expanded=[^>]*id="sheet-toggle"/.test(s)) fail(f, '#sheet-toggle needs aria-expanded');
+      if (!/id="sheet-toggle"[^>]*aria-controls=|aria-controls=[^>]*id="sheet-toggle"/.test(s)) fail(f, '#sheet-toggle needs aria-controls');
+    }
+    const css = fs.existsSync('site/kit/pill.css') ? read('site/kit/pill.css') : '';
+    if (!/@media[^{]*max-width/.test(css)) fail('site/kit/pill.css', 'needs a max-width media query for the narrow layout');
+  },
+  menu() {  // a menu on every page: a button and a panel listing the twelve pills and the index
+    const list = pills(), names = list.map(f => path.basename(f));
+    for (const f of pages()) {
+      const s = read(f), pill = f.includes('/pills/');
+      if (!/<button[^>]*\bid="menu-toggle"/.test(s)) { fail(f, 'needs <button id="menu-toggle">'); continue; }
+      if (!/id="menu-toggle"[^>]*aria-expanded=|aria-expanded=[^>]*id="menu-toggle"/.test(s)) fail(f, '#menu-toggle needs aria-expanded');
+      if (!/id="menu-toggle"[^>]*aria-controls="menu-panel"|aria-controls="menu-panel"[^>]*id="menu-toggle"/.test(s)) fail(f, '#menu-toggle needs aria-controls="menu-panel"');
+      if (!/aria-label="Menu"|>\s*Menu\s*</.test(s)) fail(f, 'the menu button needs the accessible name "Menu"');
+      const panel = s.match(/<nav[^>]*\bid="menu-panel"[\s\S]*?<\/nav>/);
+      if (!panel) { fail(f, 'needs <nav id="menu-panel"> ... </nav>'); continue; }
+      for (const n of names) if (!panel[0].includes(`href="${pill ? n : 'pills/' + n}"`)) fail(f, `menu panel lacks the link to ${n}`);
+      if (pill && !/href="(\.\.\/|\.\.\/index\.html)"/.test(panel[0])) fail(f, 'menu panel needs the link home (../ or ../index.html)');
+      if (pill && !panel[0].includes('aria-current="page"')) fail(f, 'menu panel must mark the current pill with aria-current="page"');
+    }
+  },
+  footer() {  // the credit line on every page, with the two bubbles and the three links
+    if (!fs.existsSync('site/LICENSE')) fail('site/LICENSE', 'missing: build.js must copy LICENSE into site/');
+    for (const f of pages()) {
+      const s = read(f), pill = f.includes('/pills/');
+      const m = s.match(/<footer[\s\S]*?<\/footer>/);
+      if (!m) { fail(f, 'needs a <footer>'); continue; }
+      const t = m[0];
+      if (!/Developed by/.test(t) || !/cvs72/.test(t) || !/using Claude/.test(t)) fail(f, 'footer must read "Developed by cvs72 using Claude"');
+      if (/CVS72|Cvs72/.test(t)) fail(f, 'the handle is lowercase: cvs72');
+      if (!t.includes('Enjoy, Carlos Val Souto.')) fail(f, 'footer lacks the bubble "Enjoy, Carlos Val Souto."');
+      if (!t.includes('Contact the developer')) fail(f, 'footer lacks the bubble "Contact the developer"');
+      if (!t.includes(`href="${pill ? '../' : ''}LICENSE"`)) fail(f, `footer must link MIT License to ${pill ? '../' : ''}LICENSE`);
+      const c = t.match(/<a[^>]*href="https:\/\/github\.com\/cvs72\/micrograd-pills\/issues\/new"[^>]*>/);
+      if (!c) fail(f, 'the "Contact the developer" bubble must be a link to https://github.com/cvs72/micrograd-pills/issues/new');
+      else if (!/rel="[^"]*noopener/.test(c[0])) fail(f, 'the contact link needs rel="noopener"');
+    }
+  },
+  fit() {  // the first frame is framed after the fonts are ready, with no per-pill workaround left
+    const js = fs.existsSync('site/kit/pill.js') ? read('site/kit/pill.js') : '';
+    if (!/document\.fonts\.ready/.test(js)) fail('site/kit/pill.js', 'the first layout and fit must wait for document.fonts.ready');
+    for (const f of [...walk(SITE, ['.js', '.html']), ...walk('src/pills', ['.html'])]) if (read(f).includes('firstFitBodyFallback')) fail(f, 'firstFitBodyFallback must go');
   },
   ci() {  // the workflow that checks and deploys on every push
     const w = '.github/workflows/site.yml';
