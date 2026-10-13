@@ -168,6 +168,9 @@ window.Pill = {
         if (sheetBtn) { sheetBtn.setAttribute('aria-expanded', String(open)); sheetBtn.setAttribute('aria-label', open ? 'Hide the text' : 'Show the text'); }
       }
       if (sheetBtn) {
+        // the handle exists only where the sheet does: in the wide layout the text is already in view
+        const syncHandle = () => { if (sheetMode.matches) { if (!sheetBtn.isConnected) titleEl.after(sheetBtn); } else { setSheet(false); sheetBtn.remove(); } };
+        sheetMode.addEventListener('change', syncHandle); syncHandle();
         sheetBtn.onclick = () => setSheet(!document.body.classList.contains('sheet-open'));
         stage.addEventListener('click', () => setSheet(false));
         window.addEventListener('keydown', e => { if (e.key === 'Escape') setSheet(false); });
